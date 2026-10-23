@@ -284,7 +284,7 @@
                         </button>
                         <button onclick="toggleBaseMap()" id="btnBaseMap" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center gap-1.5">
                             <i class="fa-solid fa-layer-group text-indigo-400"></i>
-                            <span id="baseMapLabel">แผนที่มืด (Dark)</span>
+                            <span id="baseMapLabel">แผนที่ดาวเทียม (Satellite)</span>
                         </button>
                     </div>
 
@@ -636,10 +636,10 @@
             });
 
             // Base Map Layers
-            // เปลี่ยนมาใช้ Esri World Dark Gray Base แทน CartoDB แก้ปัญหา API Key Required
-            darkTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
-                maxZoom: 16
+            // เปลี่ยนมาใช้ Esri World Imagery (Satellite) รองรับการซูมที่ลึกขึ้น
+            darkTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+                maxZoom: 18
             });
 
             lightTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -696,11 +696,11 @@
             if (isDarkMap) {
                 map.removeLayer(lightTileLayer);
                 darkTileLayer.addTo(map);
-                label.textContent = "แผนที่มืด (Dark)";
+                label.textContent = "แผนที่ดาวเทียม (Satellite)";
             } else {
                 map.removeLayer(darkTileLayer);
                 lightTileLayer.addTo(map);
-                label.textContent = "แผนที่สว่าง (Street)";
+                label.textContent = "แผนที่ถนน (Street)";
             }
         }
 
