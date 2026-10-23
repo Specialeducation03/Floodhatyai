@@ -3,357 +3,298 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hybrid Flood Radar - หาดใหญ่</title>
+    <title>ระบบเฝ้าระวังฝนและน้ำท่วม อ.หาดใหญ่ (Hybrid Data)</title>
     
     <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
+    <!-- Tailwind CSS (สำหรับการจัดหน้า UI เดิม) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
     
     <style>
-        :root {
-            --bg-color: #0f172a;
-            --panel-bg: #1e293b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --accent-blue: #3b82f6;
-            --danger-red: #ef4444;
-            --warning-yellow: #f59e0b;
-            --safe-green: #10b981;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Kanit', sans-serif; }
-        
-        body { 
-            background-color: var(--bg-color); 
-            color: var(--text-main); 
-            display: flex; 
-            flex-direction: column; 
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        /* Header */
-        header {
-            background-color: var(--panel-bg);
-            padding: 15px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #334155;
-            z-index: 1000;
-        }
-        
-        .header-title { display: flex; align-items: center; gap: 10px; }
-        .badge {
-            background: rgba(59, 130, 246, 0.2);
-            color: var(--accent-blue);
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            border: 1px solid var(--accent-blue);
-        }
-        
-        .badge-hybrid {
-            background: rgba(245, 158, 11, 0.2);
-            color: var(--warning-yellow);
-            border: 1px solid var(--warning-yellow);
-        }
-
-        /* Main Container */
-        .container {
-            display: flex;
-            flex: 1;
-            height: calc(100vh - 70px);
-        }
-
-        /* Map Section */
-        #map {
-            flex: 2;
-            height: 100%;
-            background-color: #000; /* Fallback before tiles load */
-        }
-
-        /* Sidebar Section */
-        .sidebar {
-            flex: 1;
-            background-color: var(--bg-color);
-            padding: 20px;
-            overflow-y: auto;
-            border-left: 1px solid #334155;
-            min-width: 400px;
-            max-width: 450px;
-        }
-
-        .card {
-            background-color: var(--panel-bg);
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 15px;
-            border: 1px solid #334155;
-        }
-
-        .card-title {
-            font-size: 1rem;
-            font-weight: 500;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .data-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #334155;
-            font-size: 0.9rem;
-        }
-        .data-row:last-child { border-bottom: none; }
-        
-        .status-dot {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 5px;
-        }
-        .dot-green { background-color: var(--safe-green); box-shadow: 0 0 8px var(--safe-green); }
-        .dot-yellow { background-color: var(--warning-yellow); box-shadow: 0 0 8px var(--warning-yellow); }
-        .dot-red { background-color: var(--danger-red); box-shadow: 0 0 8px var(--danger-red); }
-
-        /* Custom Map Marker */
+        body { font-family: 'Kanit', sans-serif; }
+        /* Custom Marker */
         .custom-marker {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            color: white;
-            font-weight: bold;
-            border: 2px solid white;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            display: flex; justify-content: center; align-items: center;
+            width: 28px; height: 28px; border-radius: 50%;
+            color: white; font-weight: bold; font-size: 12px;
+            border: 2px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            transition: all 0.3s ease;
         }
-        .marker-green { background-color: var(--safe-green); }
-        .marker-yellow { background-color: var(--warning-yellow); }
-        .marker-red { background-color: var(--danger-red); }
+        .marker-gray { background-color: #64748b; }
+        .marker-blue { background-color: #3b82f6; }
+        .marker-yellow { background-color: #eab308; }
+        .marker-red { background-color: #ef4444; animation: pulse-red 1.5s infinite; }
+        
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
 
-        /* Loader */
-        #loader {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(15, 23, 42, 0.9);
-            padding: 20px 40px;
-            border-radius: 8px;
-            z-index: 2000;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            border: 1px solid var(--accent-blue);
-        }
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        
+        /* Map Controls Fix */
+        .leaflet-top { z-index: 999; }
     </style>
 </head>
-<body>
+<body class="bg-slate-900 text-white h-screen flex flex-col overflow-hidden">
 
-    <header>
-        <div class="header-title">
-            <h3>⛈️ ระบบเฝ้าระวังน้ำท่วม หาดใหญ่</h3>
-            <span class="badge badge-hybrid">Hybrid Analysis (ECMWF + GFS + ระดับน้ำจริง)</span>
+    <!-- Top Navbar -->
+    <nav class="bg-slate-800 border-b border-slate-700 px-4 py-3 flex items-center justify-between z-[1000]">
+        <div class="flex items-center gap-4">
+            <div class="bg-blue-600 text-white p-2 rounded-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>
+            </div>
+            <div>
+                <h1 class="text-lg font-semibold leading-tight">ระบบเฝ้าระวังฝนและน้ำท่วม อ.หาดใหญ่</h1>
+                <p class="text-xs text-slate-400">ECMWF + GFS + ข้อมูลระดับน้ำ สสน. (Hybrid)</p>
+            </div>
         </div>
-        <div>
-            <span style="font-size: 0.85rem; color: var(--text-muted);" id="last-update">อัปเดตข้อมูลล่าสุด: กำลังโหลด...</span>
-        </div>
-    </header>
-
-    <div class="container">
-        <div id="map"></div>
         
-        <div class="sidebar">
-            <div class="card" style="border-color: var(--accent-blue);">
-                <div class="card-title">🌊 ข้อมูลระดับน้ำคลองอู่ตะเภา (สสน.)</div>
-                <div class="data-row">
-                    <span>สถานี X.44 (บ้านท่าแซ)</span>
-                    <strong id="wl-x44">กำลังโหลด...</strong>
-                </div>
-                <div class="data-row">
-                    <span>สถานะความจุกระแสลำน้ำ</span>
-                    <strong id="wl-percent">...</strong>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-title">📊 สรุปประเมินความเสี่ยง 8 จุดเฝ้าระวัง</div>
-                <div id="location-list">
-                    <!-- จะถูกเติมด้วย JavaScript -->
-                    <div style="text-align: center; color: var(--text-muted); font-size: 0.9rem;">กำลังดึงข้อมูลพยากรณ์อากาศ...</div>
-                </div>
+        <div class="flex items-center gap-3">
+            <button onclick="fetchData()" class="bg-blue-500 hover:bg-blue-600 text-white text-sm px-4 py-2 rounded-md flex items-center gap-2 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                ดึงข้อมูลจริง (Live Data)
+            </button>
+            <div class="bg-slate-700 text-sm px-4 py-2 rounded-md border border-slate-600">
+                <span id="last-update" class="text-slate-300">อัปเดตล่าสุด: กำลังโหลด...</span>
             </div>
         </div>
+    </nav>
+
+    <!-- Status Bar -->
+    <div id="overall-status-bar" class="bg-emerald-900/50 border-b border-emerald-800 px-6 py-2 flex items-center gap-3">
+        <span id="overall-status-badge" class="bg-emerald-600 text-white text-xs px-2 py-1 rounded-full font-medium">สถานการณ์ปกติ</span>
+        <span id="overall-status-text" class="text-sm text-emerald-200">ปริมาณน้ำฝนและระดับน้ำคลองอู่ตะเภาอยู่ในเกณฑ์ปลอดภัย</span>
     </div>
 
-    <div id="loader">
-        <span style="font-size: 1.2rem;">กำลังวิเคราะห์ข้อมูลจาก 3 แหล่ง...</span>
+    <!-- Main Content -->
+    <div class="flex flex-1 overflow-hidden relative">
+        
+        <!-- Map Container -->
+        <div class="w-2/3 h-full relative" id="map">
+            <!-- Custom Map Buttons -->
+            <div class="absolute top-4 left-14 z-[1000] flex gap-2">
+                <button onclick="map.setView([7.0086, 100.4747], 13)" class="bg-slate-800/90 hover:bg-slate-700 text-xs px-3 py-2 rounded-md border border-slate-600 backdrop-blur-sm flex items-center gap-2">
+                    🏙️ ซูมเขตเมืองหาดใหญ่
+                </button>
+                <button onclick="map.setView([6.9128, 100.4500], 11)" class="bg-slate-800/90 hover:bg-slate-700 text-xs px-3 py-2 rounded-md border border-slate-600 backdrop-blur-sm flex items-center gap-2">
+                    🌊 ดูกลุ่มน้ำคลองอู่ตะเภา
+                </button>
+                <button class="bg-slate-800/90 text-blue-400 text-xs px-3 py-2 rounded-md border border-blue-500 backdrop-blur-sm flex items-center gap-2">
+                    🛰️ แผนที่ดาวเทียม (Google)
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Sidebar -->
+        <div class="w-1/3 bg-slate-900 border-l border-slate-700 flex flex-col h-full overflow-y-auto p-4 gap-4">
+            
+            <!-- Card 1: Rain Now -->
+            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-medium flex items-center gap-2 text-blue-400">
+                        🌧️ จุดที่ฝนกำลังตกตอนนี้
+                    </h3>
+                    <span id="count-raining" class="bg-slate-700 text-xs px-2 py-1 rounded-md">0 จุด</span>
+                </div>
+                <div id="list-raining" class="text-sm text-slate-400 space-y-2">
+                    กำลังตรวจสอบ...
+                </div>
+            </div>
+
+            <!-- Card 2: Rain Soon -->
+            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-medium flex items-center gap-2 text-yellow-400">
+                        ⏳ จุดที่ฝนกำลังจะตก (1-3 ชม.)
+                    </h3>
+                    <span id="count-soon" class="bg-slate-700 text-xs px-2 py-1 rounded-md">0 จุด</span>
+                </div>
+                <div id="list-soon" class="text-sm text-slate-400 space-y-2">
+                    กำลังตรวจสอบ...
+                </div>
+            </div>
+
+            <!-- Card 3: Water Level (ThaiWater) -->
+            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-medium flex items-center gap-2 text-cyan-400">
+                        🌊 ระดับน้ำคลองอู่ตะเภา (สสน.)
+                    </h3>
+                </div>
+                <div class="flex justify-between items-center bg-slate-900 p-3 rounded-lg border border-slate-700">
+                    <div>
+                        <div class="text-sm text-slate-300">สถานี X.44 (บ้านท่าแซ)</div>
+                        <div id="wl-x44-status" class="text-xs text-slate-500 mt-1">กำลังโหลดข้อมูล...</div>
+                    </div>
+                    <div class="text-right">
+                        <div id="wl-x44-val" class="text-lg font-semibold">- ม.</div>
+                        <div id="wl-x44-pct" class="text-xs text-cyan-400">ความจุ -%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 4: 8 Stations Table -->
+            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700 flex-1">
+                <h3 class="font-medium mb-3 flex items-center gap-2">
+                    📍 ตารางสถานีเฝ้าระวังทั้ง 8 จุด
+                </h3>
+                <div id="table-8-points" class="space-y-3">
+                    <!-- JS will populate this -->
+                    <div class="text-center text-sm text-slate-500 py-4">กำลังโหลดข้อมูลโมเดล...</div>
+                </div>
+            </div>
+
+        </div>
     </div>
 
     <script>
-        // 1. กำหนดพิกัดจุดเฝ้าระวัง
-        const locations = [
-            { id: 1, name: "เทศบาลนครหาดใหญ่", lat: 7.0086, lon: 100.4747 },
-            { id: 2, name: "เขาคอหงส์", lat: 7.0050, lon: 100.5050 },
-            { id: 3, name: "ต.คลองแห", lat: 7.0425, lon: 100.4764 },
-            { id: 4, name: "ต.ควนลัง", lat: 6.9942, lon: 100.4328 },
-            { id: 5, name: "บ้านพรุ (กลางน้ำ)", lat: 6.9128, lon: 100.4636 },
-            { id: 6, name: "ต.คลองหลา", lat: 6.9389, lon: 100.4158 },
-            { id: 7, name: "อ.สะเดา (ต้นน้ำ)", lat: 6.6384, lon: 100.4228 }
+        let map;
+        let markers = [];
+        let globalWaterScore = 0; // คะแนนความเสี่ยงจากระดับน้ำเริ่มต้น
+
+        // ข้อมูล 8 จุดเฝ้าระวัง
+        const stations = [
+            { id: 1, name: "ต.หาดใหญ่ (เทศบาลนคร)", lat: 7.0086, lon: 100.4747, type: "urban" },
+            { id: 2, name: "ต.คอหงส์ (เชิงเขา)", lat: 7.0050, lon: 100.5050, type: "urban" },
+            { id: 3, name: "ต.คลองแห (ปลายน้ำ)", lat: 7.0425, lon: 100.4764, type: "urban" },
+            { id: 4, name: "ต.ควนลัง", lat: 6.9942, lon: 100.4328, type: "urban" },
+            { id: 5, name: "ต.บ้านพรุ (กลางน้ำ)", lat: 6.9128, lon: 100.4636, type: "river" },
+            { id: 6, name: "ต.พะตง", lat: 6.8631, lon: 100.4578, type: "river" },
+            { id: 7, name: "ต.คลองหลา", lat: 6.9389, lon: 100.4158, type: "river" },
+            { id: 8, name: "อ.สะเดา (ต้นน้ำ)", lat: 6.6384, lon: 100.4228, type: "river" }
         ];
 
-        let map;
-        let waterLevelScore = 0; // คะแนนความเสี่ยงตั้งต้นจากระดับน้ำ
-
-        // 2. เริ่มต้นแผนที่ (ใช้ Google Satellite)
         function initMap() {
-            map = L.map('map').setView([6.95, 100.46], 11);
-            
-            // แผนที่ดาวเทียม Google Maps (ฟรี ลื่นไหล ซูมได้ลึกสุดๆ)
+            map = L.map('map', { zoomControl: false }).setView([6.95, 100.46], 11);
+            L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
+            // ใช้ Google Satellite แก้ปัญหาซูมแล้วจอดำ
             L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
                 maxZoom: 20,
-                attribution: '© Google Maps Satellite'
+                attribution: '© Google Maps'
             }).addTo(map);
         }
 
-        // 3. ฟังก์ชันดึงระดับน้ำจาก สสน.
-        async function fetchWaterLevel() {
+        async function fetchThaiWater() {
             try {
-                const response = await fetch("https://api-v3.thaiwater.net/api/v1/thaiwater30/tele_waterlevel/all");
-                const data = await response.json();
-                
-                // หาสถานี X.44
+                // ดึงข้อมูลระดับน้ำ สสน.
+                const res = await fetch("https://api-v3.thaiwater.net/api/v1/thaiwater30/tele_waterlevel/all");
+                const data = await res.json();
                 const x44 = data.waterlevel_data.data.find(s => s.station.tele_station_id === "X.44");
                 
                 if(x44) {
                     const wl = x44.waterlevel.water_level;
-                    const critical = 10.0; // สมมติระดับตลิ่งที่ 10 ม.รทก.
-                    const percent = (wl / critical) * 100;
+                    const critical = 10.0; // ระดับตลิ่งจำลอง
+                    const pct = (wl / critical) * 100;
                     
-                    document.getElementById('wl-x44').innerText = wl.toFixed(2) + " ม.รทก.";
-                    document.getElementById('wl-percent').innerText = percent.toFixed(1) + "%";
-
-                    // ตัดสินคะแนนความเสี่ยงระดับน้ำ
-                    if(percent >= 70) {
-                        waterLevelScore = 2;
-                        document.getElementById('wl-percent').style.color = 'var(--danger-red)';
-                    } else if (percent >= 50) {
-                        waterLevelScore = 1;
-                        document.getElementById('wl-percent').style.color = 'var(--warning-yellow)';
+                    document.getElementById('wl-x44-val').innerText = wl.toFixed(2) + " ม.";
+                    document.getElementById('wl-x44-pct').innerText = `ความจุ ${pct.toFixed(1)}%`;
+                    
+                    if(pct >= 70) {
+                        globalWaterScore = 2;
+                        document.getElementById('wl-x44-status').innerText = "ระดับน้ำสูง เสี่ยงล้นตลิ่ง";
+                        document.getElementById('wl-x44-status').classList.add('text-red-400');
+                    } else if (pct >= 50) {
+                        globalWaterScore = 1;
+                        document.getElementById('wl-x44-status').innerText = "ระดับน้ำปานกลาง";
+                        document.getElementById('wl-x44-status').classList.add('text-yellow-400');
                     } else {
-                        document.getElementById('wl-percent').style.color = 'var(--safe-green)';
+                        globalWaterScore = 0;
+                        document.getElementById('wl-x44-status').innerText = "ระดับน้ำปกติ รับน้ำได้อีกมาก";
                     }
                 }
-            } catch (e) {
-                console.log("CORS บล็อกหรือโหลดข้อมูล สสน. ไม่ได้ ใช้ค่าจำลองแทน");
-                // Fallback กรณีเปิดบนเบราว์เซอร์แล้วติด CORS Policy
-                document.getElementById('wl-x44').innerText = "6.50 ม.รทก. (ค่าจำลอง)";
-                document.getElementById('wl-percent').innerText = "65.0%";
-                document.getElementById('wl-percent').style.color = 'var(--warning-yellow)';
-                waterLevelScore = 1;
+            } catch (error) {
+                document.getElementById('wl-x44-status').innerText = "ใช้ค่าจำลอง (เชื่อมต่อ สสน. ไม่ได้)";
+                document.getElementById('wl-x44-val').innerText = "6.50 ม.";
+                document.getElementById('wl-x44-pct').innerText = "ความจุ 65.0%";
+                globalWaterScore = 1;
             }
         }
 
-        // 4. ฟังก์ชันดึงข้อมูลพยากรณ์และคำนวณ Risk Score
-        async function analyzeHybridWeather() {
-            const listContainer = document.getElementById('location-list');
-            listContainer.innerHTML = ""; // ล้างของเก่า
+        async function fetchData() {
+            document.getElementById('last-update').innerText = "กำลังดึงข้อมูล...";
+            await fetchThaiWater();
 
-            for(let loc of locations) {
-                // ดึงพร้อมกัน 2 โมเดล (ECMWF และ GFS)
-                const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&hourly=precipitation_ecmwf_ifs,precipitation_gfs_seamless&timezone=Asia/Bangkok&forecast_days=2`;
+            let rainingNowHTML = "";
+            let rainingSoonHTML = "";
+            let tableHTML = "";
+            let countNow = 0;
+            let countSoon = 0;
+            let maxRiskGlobal = 0;
+
+            // Clear old markers
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            for (const st of stations) {
+                // ดึง ECMWF + GFS ล่วงหน้า 2 วัน
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${st.lat}&longitude=${st.lon}&current=precipitation&hourly=precipitation_ecmwf_ifs,precipitation_gfs_seamless&timezone=Asia/Bangkok&forecast_days=2`;
                 
                 try {
                     const res = await fetch(url);
                     const data = await res.json();
                     
-                    // ดึงเวลาปัจจุบันเพื่อหาตำแหน่ง Index
-                    const nowString = new Date().toISOString().substring(0, 13);
-                    let idx = data.hourly.time.findIndex(t => t.startsWith(nowString));
-                    if(idx === -1) idx = 0;
+                    const currentRain = data.current.precipitation || 0;
+                    const timeIdx = data.hourly.time.findIndex(t => t.startsWith(data.current.time.substring(0,13)));
+                    const idx = timeIdx !== -1 ? timeIdx : 0;
 
-                    // ดูล่วงหน้า 3 ชั่วโมง
-                    const ecmwfRain = data.hourly.precipitation_ecmwf_ifs.slice(idx, idx+3);
-                    const maxEcmwf = Math.max(...ecmwfRain);
-                    
-                    const gfsRain = data.hourly.precipitation_gfs_seamless.slice(idx, idx+3);
-                    const maxGfs = Math.max(...gfsRain);
+                    // คำนวณฝน ECMWF และ GFS ล่วงหน้า 3 ชม.
+                    const ecmwf3h = data.hourly.precipitation_ecmwf_ifs.slice(idx, idx+3);
+                    const gfs3h = data.hourly.precipitation_gfs_seamless.slice(idx, idx+3);
+                    const ecmwf24h = data.hourly.precipitation_ecmwf_ifs.slice(idx, idx+24);
 
-                    // ===================================
-                    // ระบบให้คะแนน (Hybrid Risk Scoring)
-                    // ===================================
-                    let locationScore = waterLevelScore; // เริ่มต้นด้วยคะแนนระดับน้ำคลอง
-                    
-                    if (maxEcmwf >= 15.0) locationScore += 2;
-                    else if (maxEcmwf >= 5.0) locationScore += 1;
+                    const maxEcmwf = Math.max(...ecmwf3h);
+                    const maxGfs = Math.max(...gfs3h);
+                    const sumEcmwf24h = ecmwf24h.reduce((a,b)=>a+b,0);
 
-                    if (maxGfs >= 15.0) locationScore += 1; // GFS ยืนยันสมทบ
+                    // --- การให้คะแนนความเสี่ยง (Risk Score) ---
+                    let riskScore = globalWaterScore;
+                    if (maxEcmwf >= 15.0) riskScore += 2;
+                    else if (maxEcmwf >= 5.0) riskScore += 1;
+                    if (maxGfs >= 15.0) riskScore += 1; // GFS ยืนยัน
+                    if (sumEcmwf24h >= 90.0) riskScore += 2; // ฝนสะสมเยอะ
 
-                    // กำหนดสีและสถานะ
-                    let statusColor = "green";
-                    let markerClass = "marker-green";
-                    let statusText = "ปกติ";
+                    maxRiskGlobal = Math.max(maxRiskGlobal, riskScore);
 
-                    if (locationScore >= 3) {
-                        statusColor = "red";
-                        markerClass = "marker-red";
-                        statusText = "วิกฤต (ตกหนักทั้ง 2 โมเดล + น้ำสูง)";
-                    } else if (locationScore >= 1) {
-                        statusColor = "yellow";
-                        markerClass = "marker-yellow";
-                        statusText = "เฝ้าระวัง";
+                    // กำหนดสถานะ UI
+                    let statusColor = "gray"; let statusBadge = "ไม่มีฝน";
+                    if (riskScore >= 3) { statusColor = "red"; statusBadge = "วิกฤต/ฝนตกหนัก"; }
+                    else if (riskScore >= 1) { statusColor = "yellow"; statusBadge = "เฝ้าระวัง"; }
+                    else if (currentRain > 0 || maxEcmwf > 0) { statusColor = "blue"; statusBadge = "มีฝนตก"; }
+
+                    // Card 1: กำลังตก
+                    if (currentRain >= 0.5) {
+                        countNow++;
+                        rainingNowHTML += `<div class="flex justify-between items-center p-2 bg-slate-900 rounded">
+                            <span class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-blue-500"></div> ${st.name}</span>
+                            <span class="text-blue-400">${currentRain.toFixed(1)} มม./ชม.</span>
+                        </div>`;
                     }
 
-                    // ปักหมุดลงแผนที่
-                    const icon = L.divIcon({
-                        className: `custom-marker ${markerClass}`,
-                        html: `<span>!</span>`
-                    });
-                    L.marker([loc.lat, loc.lon], {icon: icon})
-                     .addTo(map)
-                     .bindPopup(`<b>${loc.name}</b><br>ECMWF (1-3 ชม.): ${maxEcmwf.toFixed(1)} มม.<br>GFS (1-3 ชม.): ${maxGfs.toFixed(1)} มม.<br>คะแนนความเสี่ยง: ${locationScore}/4`);
+                    // Card 2: กำลังจะตก
+                    if (currentRain < 0.5 && (maxEcmwf >= 1.0 || maxGfs >= 1.0)) {
+                        countSoon++;
+                        rainingSoonHTML += `<div class="flex justify-between items-center p-2 bg-slate-900 rounded">
+                            <span class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-yellow-500"></div> ${st.name}</span>
+                            <span class="text-yellow-400">ECMWF: ${maxEcmwf.toFixed(1)} \vert{} GFS:${maxGfs.toFixed(1)}</span>
+                        </div>`;
+                    }
 
-                    // เพิ่มข้อมูลลง Sidebar
-                    const rowHtml = `
-                        <div class="data-row" style="flex-direction: column; gap: 5px;">
-                            <div style="display: flex; justify-content: space-between;">
-                                <strong><span class="status-dot dot-${statusColor}"></span>${loc.name}</strong>
-                                <span style="font-size: 0.8rem;">Score: ${locationScore}/4</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
-                                <span>ECMWF: ${maxEcmwf.toFixed(1)} มม. | GFS: ${maxGfs.toFixed(1)} มม.</span>
-                                <span style="color: var(--${statusColor === 'red' ? 'danger-red' : statusColor === 'yellow' ? 'warning-yellow' : 'safe-green'});">${statusText}</span>
-                            </div>
+                    // Card 4: ตาราง 8 จุด
+                    tableHTML += `
+                    <div class="bg-slate-900 p-3 rounded-lg border border-slate-700">
+                        <div class="flex justify-between items-center mb-2">
+                            <strong class="text-sm text-slate-200">${st.name}</strong>
+                            <span class="text-xs px-2 py-1 rounded bg-${statusColor}-500/20 text-${statusColor}-400 border border-${statusColor}-500/30">${statusBadge}</span>
                         </div>
-                    `;
-                    listContainer.innerHTML += rowHtml;
-
-                } catch (e) {
-                    console.error("Error fetching weather for", loc.name, e);
-                }
-            }
-
-            document.getElementById('loader').style.display = 'none';
-            document.getElementById('last-update').innerText = "อัปเดตล่าสุด: " + new Date().toLocaleTimeString('th-TH');
-        }
-
-        // 5. รันระบบเมื่อเปิดหน้าเว็บ
-        window.onload = async () => {
-            initMap();
-            await fetchWaterLevel();
-            await analyzeHybridWeather();
-        };
-
-    </script>
-</body>
-</html>
+                        <div class="grid grid-
