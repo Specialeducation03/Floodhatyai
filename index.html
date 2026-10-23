@@ -636,10 +636,10 @@
             });
 
             // Base Map Layers
-            // เปลี่ยนมาใช้ Esri World Imagery (Satellite) รองรับการซูมที่ลึกขึ้น
-            darkTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-                maxZoom: 18
+            // ใช้ Google Maps Satellite เพื่อแก้ปัญหา Zoom Level Not Supported
+            darkTileLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                attribution: '&copy; Google Maps',
+                maxZoom: 20
             });
 
             lightTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
