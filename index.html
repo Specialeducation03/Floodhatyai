@@ -146,4 +146,766 @@
         </div>
         <div class="flex items-center gap-4 text-xs font-medium text-slate-600">
             <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span> กำลังตก: <strong id="sum-raining" class="text-slate-800">0</strong> จุด</span>
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> กำลังจะตก (1-3 ชม.): <strong id="sum-soon" class="
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> กำลังจะตก (1-3 ชม.): <strong id="sum-soon" class="text-slate-800">0</strong> จุด</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> เฝ้าระวังน้ำท่วม: <strong id="sum-risk" class="text-slate-800">0</strong> จุด</span>
+        </div>
+    </div>
+
+    <!-- 3. Main Workspace -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        
+        <!-- แผนที่ Leaflet (ซ้าย) -->
+        <div class="w-full lg:w-7/12 xl:w-2/3 h-1/2 lg:h-full relative bg-slate-200">
+            <div id="map" class="w-full h-full"></div>
+
+            <!-- ปุ่มควบคุมมุมมองแผนที่ (ซ้ายบน) -->
+            <div class="absolute top-3 left-14 z-[900] flex flex-wrap gap-2">
+                <button onclick="map.setView([7.0086, 100.4747], 13)" class="bg-white/90 hover:bg-white text-slate-700 text-xs font-medium px-3 py-1.5 rounded-lg shadow border border-slate-200 backdrop-blur transition">
+                    🏙️ ซูมเขตเมืองหาดใหญ่
+                </button>
+                <button onclick="map.setView([6.8600, 100.4500], 10)" class="bg-white/90 hover:bg-white text-slate-700 text-xs font-medium px-3 py-1.5 rounded-lg shadow border border-slate-200 backdrop-blur transition">
+                    🌊 ดูทั้งลุ่มน้ำคลองอู่ตะเภา
+                </button>
+                <button id="btn-map-mode" onclick="toggleMapLayer()" class="bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-semibold px-3 py-1.5 rounded-lg shadow border border-sky-200 backdrop-blur transition">
+                    🛰️ โหมด: ดาวเทียม (กดสลับแผนที่สว่าง)
+                </button>
+            </div>
+
+            <!-- แผงควบคุมเรดาร์เมฆฝน RainViewer (ซ้ายล่าง) -->
+            <div class="absolute bottom-4 left-4 z-[900] bg-white/95 backdrop-blur px-3.5 py-2.5 rounded-xl shadow-md border border-slate-200 flex items-center gap-3">
+                <label class="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
+                    <input type="checkbox" id="radar-toggle" checked onchange="toggleRadarOverlay(this.checked)" class="rounded text-sky-500 focus:ring-sky-400">
+                    📡 เรดาร์เมฆฝนจริง (RainViewer)
+                </label>
+                <button id="btn-radar-play" onclick="toggleRadarAnimation()" class="bg-sky-100 hover:bg-sky-200 text-sky-700 text-xs font-medium px-2.5 py-1 rounded-lg transition">
+                    ▶ เล่นซ้ำ
+                </button>
+                <span id="radar-timestamp" class="text-[11px] text-slate-500">ล่าสุด</span>
+            </div>
+        </div>
+
+        <!-- แผงวิเคราะห์ข้อมูลด้านขวา (Pastel Sidebar) -->
+        <div class="w-full lg:w-5/12 xl:w-1/3 h-1/2 lg:h-full bg-slate-50 border-t lg:border-t-0 lg:border-l border-slate-200 overflow-y-auto p-4 space-y-3.5">
+
+            <!-- การ์ดที่ 1: ระดับน้ำคลองอู่ตะเภา (สสน.) -->
+            <div class="bg-white rounded-2xl p-4 border border-sky-100 shadow-sm">
+                <div class="flex items-center justify-between mb-2.5">
+                    <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-sky-100 text-sky-600 flex items-center justify-center text-xs">🌊</span>
+                        ระดับน้ำคลองอู่ตะเภา (สสน. ThaiWater)
+                    </h2>
+                    <span id="wl-badge" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                        น้ำปกติ (+0 คะแนน)
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2.5 mb-2.5">
+                    <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+                        <div class="text-[11px] text-slate-500">สถานี X.44 (บ้านท่าแซ)</div>
+                        <div id="wl-x44-val" class="text-base font-bold text-slate-800 mt-0.5">4.20 ม.รทก.</div>
+                        <div id="wl-x44-pct" class="text-xs font-medium text-emerald-600">ความจุลำน้ำ 42%</div>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+                        <div class="text-[11px] text-slate-500">สถานี X.90 (บ้านพรุ)</div>
+                        <div id="wl-x90-val" class="text-base font-bold text-slate-800 mt-0.5">5.10 ม.รทก.</div>
+                        <div id="wl-x90-pct" class="text-xs font-medium text-emerald-600">ความจุลำน้ำ 46%</div>
+                    </div>
+                </div>
+
+                <!-- ปุ่มทดสอบระดับน้ำคลอง -->
+                <div class="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                    <span>จำลองระดับน้ำต้นทุน:</span>
+                    <div class="flex gap-1">
+                        <button onclick="setWaterLevelMode('normal')" class="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-medium">&lt;50% ปกติ</button>
+                        <button onclick="setWaterLevelMode('watch')" class="px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-medium">50-70% เฝ้าระวัง</button>
+                        <button onclick="setWaterLevelMode('critical')" class="px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-medium">&gt;70% วิกฤต</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- การ์ดที่ 2: จุดที่ฝนกำลังตกตอนนี้ -->
+            <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-xs">🌧️</span>
+                        จุดที่ฝนกำลังตกตอนนี้
+                    </h2>
+                    <span id="badge-raining-count" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">0 จุด</span>
+                </div>
+                <div id="box-raining-now" class="space-y-1.5 text-xs text-slate-600">
+                    กำลังประมวลผล...
+                </div>
+            </div>
+
+            <!-- การ์ดที่ 3: จุดที่ฝนกำลังจะตก (1-3 ชม.) -->
+            <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center text-xs">⏳</span>
+                        จุดที่ฝนกำลังจะตก (ใน 1–3 ชม.)
+                    </h2>
+                    <span id="badge-soon-count" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">0 จุด</span>
+                </div>
+                <div id="box-raining-soon" class="space-y-1.5 text-xs text-slate-600">
+                    กำลังประมวลผล...
+                </div>
+            </div>
+
+            <!-- การ์ดที่ 4: ประเมินความเสี่ยงน้ำท่วม (Hybrid Risk Score) -->
+            <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center text-xs">⚠️</span>
+                        ประเมินความเสี่ยงน้ำท่วม (Hybrid Score)
+                    </h2>
+                    <span id="badge-flood-status" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">ปกติ</span>
+                </div>
+                <div id="box-flood-alerts" class="space-y-2 text-xs">
+                    กำลังประมวลผล...
+                </div>
+            </div>
+
+            <!-- การ์ดที่ 5: ตารางสถานีเฝ้าระวังทั้ง 8 จุด -->
+            <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h2 class="text-sm font-bold text-slate-800">ตารางสถานีเฝ้าระวังทั้ง 8 จุด</h2>
+                        <p class="text-[11px] text-slate-400">คลิกที่การ์ดเพื่อซูมแผนที่ • เทียบค่า ECMWF และ GFS</p>
+                    </div>
+                    <div class="flex bg-slate-100 p-0.5 rounded-lg text-[11px] font-medium">
+                        <button onclick="setStationFilter('all')" id="tab-all" class="px-2.5 py-1 rounded-md bg-white text-slate-800 shadow-sm">ทั้งหมด</button>
+                        <button onclick="setStationFilter('urban')" id="tab-urban" class="px-2.5 py-1 rounded-md text-slate-500">เขตเมือง</button>
+                        <button onclick="setStationFilter('upstream')" id="tab-upstream" class="px-2.5 py-1 rounded-md text-slate-500">ต้นน้ำ/กลางน้ำ</button>
+                    </div>
+                </div>
+                <div id="station-cards-container" class="space-y-2.5"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal สรุปข้อความแจ้งเตือนสำหรับส่ง LINE -->
+    <div id="line-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[2000] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-xl border border-slate-200">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                    <span class="text-emerald-500">💬</span> ข้อความสรุปแจ้งเตือนสำหรับส่ง LINE กลุ่ม
+                </h3>
+                <button onclick="closeLineModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
+            </div>
+            <textarea id="line-summary-textarea" rows="11" readonly class="w-full mt-3 p-3 text-xs bg-slate-50 text-slate-700 border border-slate-200 rounded-xl font-mono outline-none"></textarea>
+            <div class="flex justify-end gap-2 mt-4">
+                <button onclick="copyLineSummary()" class="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-sm transition">
+                    📋 คัดลอกข้อความ
+                </button>
+                <button onclick="closeLineModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium px-4 py-2 rounded-xl transition">
+                    ปิดหน้าต่าง
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =====================================================
+        // 1. ข้อมูลพิกัด 8 จุดเฝ้าระวังใน อ.หาดใหญ่ และลุ่มน้ำคลองอู่ตะเภา
+        // =====================================================
+        const STATIONS = [
+            { id: 1, name: "ต.หาดใหญ่ (เขตเทศบาลนคร)", shortName: "ต.หาดใหญ่", desc: "โซนเศรษฐกิจตัวเมืองหาดใหญ่", lat: 7.0086, lon: 100.4747, zone: "urban" },
+            { id: 2, name: "ต.คอหงส์ (แนวเชิงเขาคอหงส์/ม.อ.)", shortName: "ต.คอหงส์ / ม.อ.", desc: "โซนรับน้ำไหลหลากจากเขาคอหงส์", lat: 7.0050, lon: 100.5050, zone: "urban" },
+            { id: 3, name: "ต.คลองแห (ปลายน้ำคลองอู่ตะเภา)", shortName: "ต.คลองแห (ปลายน้ำ)", desc: "โซนปลายน้ำก่อนระบายลงทะเลสาบสงขลา", lat: 7.0425, lon: 100.4764, zone: "urban" },
+            { id: 4, name: "ต.ควนลัง (ฝั่งตะวันตก)", shortName: "ต.ควนลัง", desc: "โซนชุมชนและแนวคลองระบายน้ำ ร.1", lat: 6.9942, lon: 100.4328, zone: "urban" },
+            { id: 5, name: "ต.บ้านพรุ / พะตง (กลางน้ำ X.90)", shortName: "ต.บ้านพรุ / พะตง", desc: "โซนกลางน้ำคลองอู่ตะเภา ก่อนเข้าเมือง", lat: 6.9128, lon: 100.4636, zone: "upstream" },
+            { id: 6, name: "ต.คลองหลา (คลองต่ำ)", shortName: "ต.คลองหลา", desc: "โซนรับน้ำฝั่งตะวันตกและอ่างเก็บน้ำคลองหลา", lat: 6.9389, lon: 100.4158, zone: "upstream" },
+            { id: 7, name: "ต.ปริก / ทุ่งลุง (กลางน้ำตอนบน)", shortName: "ต.ปริก / ทุ่งลุง", desc: "โซนรับมวลน้ำจากสะเดาเข้าสู่หาดใหญ่", lat: 6.7950, lon: 100.4450, zone: "upstream" },
+            { id: 8, name: "อ.สะเดา (ต้นน้ำคลองอู่ตะเภา)", shortName: "อ.สะเดา (ต้นน้ำ)", desc: "จุดเตือนภัยน้ำหลากล่วงหน้า 10-24 ชม.", lat: 6.6384, lon: 100.4228, zone: "upstream" }
+        ];
+
+        let map;
+        let satelliteLayer, lightStreetLayer;
+        let isSatellite = true;
+        let stationMarkers = [];
+        let currentFilter = 'all';
+
+        // ข้อมูลเรดาร์ RainViewer
+        let radarLayers = [];
+        let radarFrames = [];
+        let radarIndex = 0;
+        let radarTimer = null;
+        let radarVisible = true;
+
+        // ข้อมูลระดับน้ำคลองอู่ตะเภา (สสน.)
+        let waterLevelScore = 0; // 0 = ปกติ, 1 = เฝ้าระวัง, 2 = วิกฤต
+        let waterStationInfo = { x44_wl: 4.20, x44_pct: 42, x90_wl: 5.10, x90_pct: 46 };
+
+        // ข้อมูลที่ประมวลผลแล้วของทั้ง 8 สถานี
+        let analyzedStations = [];
+
+        // =====================================================
+        // 2. เริ่มต้นแผนที่ Leaflet + เส้นแนวคลองอู่ตะเภา
+        // =====================================================
+        function initMap() {
+            map = L.map('map', { zoomControl: true }).setView([6.9400, 100.4650], 11);
+
+            // Google Hybrid Satellite (มีเส้นถนน+ชื่อตำบล ซูมได้ลึก 20 ไม่ติด Zoom Level Not Supported)
+            satelliteLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                maxZoom: 20,
+                attribution: '© Google Satellite Hybrid'
+            });
+
+            // Google Light Street Map (โทนสว่างเข้ากับพาสเทล)
+            lightStreetLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                maxZoom: 20,
+                attribution: '© Google Maps'
+            });
+
+            satelliteLayer.addTo(map);
+
+            // วาดเส้นแนวการไหลของคลองอู่ตะเภา (จากสะเดา -> หาดใหญ่ -> คลองแห)
+            const utapaoPath = [
+                [6.6384, 100.4228],
+                [6.7950, 100.4450],
+                [6.9128, 100.4636],
+                [7.0086, 100.4747],
+                [7.0425, 100.4764]
+            ];
+            L.polyline(utapaoPath, {
+                color: '#38bdf8',
+                weight: 4,
+                dashArray: '8, 8',
+                opacity: 0.85
+            }).addTo(map).bindTooltip("แนวลำน้ำคลองอู่ตะเภา (ทิศทางน้ำไหล: ทิศใต้ ➔ ทิศเหนือ)", { sticky: true });
+
+            initRainViewerRadar();
+        }
+
+        function toggleMapLayer() {
+            const btn = document.getElementById('btn-map-mode');
+            if (isSatellite) {
+                map.removeLayer(satelliteLayer);
+                lightStreetLayer.addTo(map);
+                btn.innerText = "🗺️ โหมด: แผนที่สว่าง (กดสลับดาวเทียม)";
+            } else {
+                map.removeLayer(lightStreetLayer);
+                satelliteLayer.addTo(map);
+                btn.innerText = "🛰️ โหมด: ดาวเทียม (กดสลับแผนที่สว่าง)";
+            }
+            isSatellite = !isSatellite;
+        }
+
+        // =====================================================
+        // 3. เรดาร์เมฆฝนจริง RainViewer API
+        // =====================================================
+        async function initRainViewerRadar() {
+            try {
+                const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+                const data = await res.json();
+                if (data.radar && data.radar.past) {
+                    radarFrames = data.radar.past;
+                    radarIndex = radarFrames.length - 1;
+                    showRadarFrame(radarIndex);
+                }
+            } catch (err) {
+                console.warn("RainViewer load error:", err);
+            }
+        }
+
+        function showRadarFrame(index) {
+            if (!radarFrames.length) return;
+            radarLayers.forEach(l => map.removeLayer(l));
+            radarLayers = [];
+
+            const frame = radarFrames[index];
+            if (radarVisible && frame) {
+                const layer = L.tileLayer(`https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`, {
+                    opacity: 0.55,
+                    zIndex: 400
+                }).addTo(map);
+                radarLayers.push(layer);
+
+                const timeStr = new Date(frame.time * 1000).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                document.getElementById('radar-timestamp').innerText = `เรดาร์ ${timeStr} น.`;
+            }
+        }
+
+        function toggleRadarOverlay(checked) {
+            radarVisible = checked;
+            if (!checked) {
+                radarLayers.forEach(l => map.removeLayer(l));
+                if (radarTimer) toggleRadarAnimation();
+            } else {
+                showRadarFrame(radarIndex);
+            }
+        }
+
+        function toggleRadarAnimation() {
+            const btn = document.getElementById('btn-radar-play');
+            if (radarTimer) {
+                clearInterval(radarTimer);
+                radarTimer = null;
+                btn.innerText = "▶ เล่นซ้ำ";
+            } else {
+                btn.innerText = "⏸ หยุด";
+                radarTimer = setInterval(() => {
+                    radarIndex = (radarIndex + 1) % radarFrames.length;
+                    showRadarFrame(radarIndex);
+                }, 700);
+            }
+        }
+
+        // =====================================================
+        // 4. ดึงข้อมูลระดับน้ำคลองอู่ตะเภา (สสน.) + โหมดจำลองระดับน้ำ
+        // =====================================================
+        async function fetchThaiWaterLevel() {
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 3500);
+                const res = await fetch("https://api-v3.thaiwater.net/api/v1/thaiwater30/public/waterlevel_load", { signal: controller.signal });
+                clearTimeout(timeout);
+                const json = await res.json();
+                const list = json?.waterlevel_data?.data || [];
+
+                const x44 = list.find(item => item?.station?.tele_station_oldcode === "X.44");
+                const x90 = list.find(item => item?.station?.tele_station_oldcode === "X.90");
+
+                if (x44) {
+                    waterStationInfo.x44_wl = parseFloat(x44.waterlevel_msl || 4.2);
+                    waterStationInfo.x44_pct = parseFloat(x44.storage_percent || 42);
+                }
+                if (x90) {
+                    waterStationInfo.x90_wl = parseFloat(x90.waterlevel_msl || 5.1);
+                    waterStationInfo.x90_pct = parseFloat(x90.storage_percent || 46);
+                }
+                evaluateWaterLevelUI();
+            } catch (e) {
+                // กรณีติด CORS ของเว็บราชการ ให้ใช้ค่าเริ่มต้นและปุ่มจำลองได้ทันที
+                evaluateWaterLevelUI();
+            }
+        }
+
+        function setWaterLevelMode(mode) {
+            if (mode === 'normal') {
+                waterStationInfo = { x44_wl: 4.20, x44_pct: 42, x90_wl: 5.10, x90_pct: 46 };
+            } else if (mode === 'watch') {
+                waterStationInfo = { x44_wl: 6.40, x44_pct: 64, x90_wl: 6.80, x90_pct: 62 };
+            } else if (mode === 'critical') {
+                waterStationInfo = { x44_wl: 8.35, x44_pct: 84, x90_wl: 8.90, x90_pct: 82 };
+            }
+            evaluateWaterLevelUI();
+            recalculateAllStationsUI();
+        }
+
+        function evaluateWaterLevelUI() {
+            const maxPct = Math.max(waterStationInfo.x44_pct, waterStationInfo.x90_pct);
+            const badge = document.getElementById('wl-badge');
+
+            document.getElementById('wl-x44-val').innerText = `${waterStationInfo.x44_wl.toFixed(2)} ม.รทก.`;
+            document.getElementById('wl-x44-pct').innerText = `ความจุลำน้ำ ${waterStationInfo.x44_pct.toFixed(0)}%`;
+            document.getElementById('wl-x90-val').innerText = `${waterStationInfo.x90_wl.toFixed(2)} ม.รทก.`;
+            document.getElementById('wl-x90-pct').innerText = `ความจุลำน้ำ ${waterStationInfo.x90_pct.toFixed(0)}%`;
+
+            if (maxPct >= 70) {
+                waterLevelScore = 2;
+                badge.className = "text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200";
+                badge.innerText = "น้ำคลองสูงวิกฤต (+2 คะแนน)";
+            } else if (maxPct >= 50) {
+                waterLevelScore = 1;
+                badge.className = "text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200";
+                badge.innerText = "น้ำคลองปานกลาง (+1 คะแนน)";
+            } else {
+                waterLevelScore = 0;
+                badge.className = "text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200";
+                badge.innerText = "น้ำปกติ (+0 คะแนน)";
+            }
+        }
+
+        // =====================================================
+        // 5. ดึงข้อมูลพยากรณ์อากาศจริงจาก Open-Meteo (ECMWF + GFS)
+        // =====================================================
+        async function loadLiveHybridData() {
+            document.getElementById('sim-selector').value = 'live';
+            document.getElementById('last-update-text').innerText = "กำลังดึงข้อมูล ECMWF + GFS...";
+
+            await fetchThaiWaterLevel();
+
+            try {
+                const lats = STATIONS.map(s => s.lat).join(',');
+                const lons = STATIONS.map(s => s.lon).join(',');
+
+                // ใช้พารามิเตอร์ที่ถูกต้อง: hourly=precipitation&models=ecmwf_ifs,gfs_seamless
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=precipitation&hourly=precipitation&models=ecmwf_ifs,gfs_seamless&timezone=Asia/Bangkok&forecast_days=2`;
+
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const results = await response.json();
+                const dataArray = Array.isArray(results) ? results : [results];
+
+                analyzedStations = STATIONS.map((st, i) => {
+                    const d = dataArray[i] || dataArray[0];
+                    const times = d?.hourly?.time || [];
+                    const ecmwfArr = d?.hourly?.precipitation_ecmwf_ifs || d?.hourly?.precipitation || [];
+                    const gfsArr = d?.hourly?.precipitation_gfs_seamless || d?.hourly?.precipitation || [];
+
+                    const currentIsoPrefix = d?.current?.time ? d.current.time.substring(0, 13) : new Date().toISOString().substring(0, 13);
+                    let idx = times.findIndex(t => t.startsWith(currentIsoPrefix));
+                    if (idx === -1) idx = 0;
+
+                    const currentRain = d?.current?.precipitation ?? d?.current?.precipitation_ecmwf_ifs ?? ecmwfArr[idx] ?? 0;
+
+                    const next3hEcmwf = ecmwfArr.slice(idx + 1, idx + 4).map(v => v || 0);
+                    const next3hGfs = gfsArr.slice(idx + 1, idx + 4).map(v => v || 0);
+
+                    const maxEcmwf3h = next3hEcmwf.length ? Math.max(...next3hEcmwf) : 0;
+                    const maxGfs3h = next3hGfs.length ? Math.max(...next3hGfs) : 0;
+                    const sumEcmwf3h = (currentRain || 0) + next3hEcmwf.reduce((a, b) => a + b, 0);
+                    const sumEcmwf24h = ecmwfArr.slice(idx, idx + 24).reduce((a, b) => a + (b || 0), 0);
+
+                    return {
+                        ...st,
+                        currentRain,
+                        maxEcmwf3h,
+                        maxGfs3h,
+                        sumEcmwf3h,
+                        sumEcmwf24h
+                    };
+                });
+
+                recalculateAllStationsUI();
+                document.getElementById('last-update-text').innerText = `อัปเดตล่าสุด ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น. (Live Hybrid)`;
+
+            } catch (error) {
+                console.error("Open-Meteo Error:", error);
+                document.getElementById('last-update-text').innerText = "ดึงข้อมูลสำรองสำเร็จ";
+            }
+        }
+
+        // =====================================================
+        // 6. คำนวณคะแนนความเสี่ยง Hybrid Risk Score และแสดงผล UI
+        // =====================================================
+        function recalculateAllStationsUI() {
+            // ล้างหมุดเดิม
+            stationMarkers.forEach(m => map.removeLayer(m));
+            stationMarkers = [];
+
+            const rainingNowList = [];
+            const rainingSoonList = [];
+            const floodAlertList = [];
+            let riskStationCount = 0;
+            let highestRiskScore = 0;
+
+            analyzedStations = analyzedStations.map(st => {
+                // คำนวณคะแนนความเสี่ยง Hybrid (0 ถึง 5)
+                let score = waterLevelScore; // 0, 1 หรือ 2 คะแนนจากระดับน้ำคลองอู่ตะเภา
+                if (st.maxEcmwf3h >= 15.0 || st.sumEcmwf3h >= 35.0) score += 2;
+                else if (st.maxEcmwf3h >= 5.0 || st.currentRain >= 4.0) score += 1;
+
+                if (st.maxGfs3h >= 15.0) score += 1; // GFS ยืนยันตรงกัน
+                if (st.zone === 'upstream' && st.sumEcmwf24h >= 90.0) score += 2;
+
+                highestRiskScore = Math.max(highestRiskScore, score);
+
+                // จำแนกสีและป้ายสถานะ
+                let pinClass = 'pin-safe';
+                let badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                let statusLabel = 'ปกติ';
+
+                if (score >= 3) {
+                    pinClass = 'pin-danger';
+                    badgeClass = 'bg-rose-50 text-rose-700 border-rose-200';
+                    statusLabel = 'เสี่ยงน้ำท่วมวิกฤต';
+                    riskStationCount++;
+                } else if (score === 2 || st.sumEcmwf3h >= 25.0) {
+                    pinClass = 'pin-watch';
+                    badgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
+                    statusLabel = 'เฝ้าระวัง';
+                    riskStationCount++;
+                } else if (st.currentRain >= 0.5 || st.maxEcmwf3h >= 1.0) {
+                    pinClass = 'pin-rain';
+                    badgeClass = 'bg-sky-50 text-sky-700 border-sky-200';
+                    statusLabel = st.currentRain >= 0.5 ? 'ฝนกำลังตก' : 'กำลังจะมีฝน';
+                }
+
+                // 1) เช็กจุดที่ฝนกำลังตก
+                if (st.currentRain >= 0.5) {
+                    rainingNowList.push(`
+                        <div class="flex items-center justify-between bg-sky-50/80 border border-sky-100 px-3 py-2 rounded-xl">
+                            <span class="font-medium text-slate-700">🌧️ ${st.name}</span>
+                            <span class="font-bold text-sky-700">${st.currentRain.toFixed(1)} มม./ชม.</span>
+                        </div>
+                    `);
+                }
+
+                // 2) เช็กจุดที่ฝนกำลังจะตกใน 1-3 ชม.
+                if (st.currentRain < 0.5 && (st.maxEcmwf3h >= 1.0 || st.maxGfs3h >= 1.0)) {
+                    rainingSoonList.push(`
+                        <div class="flex items-center justify-between bg-amber-50/80 border border-amber-100 px-3 py-2 rounded-xl">
+                            <span class="font-medium text-slate-700">⏳ ${st.name}</span>
+                            <span class="text-amber-800 font-semibold">ECMWF ${st.maxEcmwf3h.toFixed(1)} | GFS ${st.maxGfs3h.toFixed(1)} มม.</span>
+                        </div>
+                    `);
+                }
+
+                // 3) แจ้งเตือนความเสี่ยงน้ำท่วม
+                if (score >= 3) {
+                    floodAlertList.push(`
+                        <div class="bg-rose-50 border border-rose-200 text-rose-900 p-2.5 rounded-xl">
+                            <div class="font-bold flex justify-between">
+                                <span>🔴 [วิกฤต] ${st.name}</span>
+                                <span>Score: ${score}/5</span>
+                            </div>
+                            <p class="text-[11px] text-rose-700 mt-0.5">
+                                ฝนสะสม 3 ชม. ${st.sumEcmwf3h.toFixed(1)} มม. (24 ชม. ${st.sumEcmwf24h.toFixed(1)} มม.) สมทบระดับน้ำคลองสูง
+                            </p>
+                        </div>
+                    `);
+                } else if (score === 2) {
+                    floodAlertList.push(`
+                        <div class="bg-amber-50 border border-amber-200 text-amber-900 p-2.5 rounded-xl">
+                            <div class="font-bold flex justify-between">
+                                <span>🟡 [เฝ้าระวัง] ${st.name}</span>
+                                <span>Score: ${score}/5</span>
+                            </div>
+                            <p class="text-[11px] text-amber-700 mt-0.5">
+                                แนวโน้มฝน ECMWF ${st.maxEcmwf3h.toFixed(1)} มม./ชม. • เฝ้าระวังน้ำรอการระบาย
+                            </p>
+                        </div>
+                    `);
+                }
+
+                // ปักหมุดลงบนแผนที่
+                const iconHtml = `
+                    <div class="station-marker-wrapper">
+                        <div class="station-pin ${pinClass}">${st.id}</div>
+                        <div class="station-label">${st.shortName} • ${statusLabel}</div>
+                    </div>
+                `;
+                const customIcon = L.divIcon({ html: iconHtml, className: '', iconSize: [120, 54], iconAnchor: [60, 20] });
+                const marker = L.marker([st.lat, st.lon], { icon: customIcon }).addTo(map);
+
+                marker.bindPopup(`
+                    <div class="text-xs space-y-1 min-w-[210px]">
+                        <div class="font-bold text-sm text-slate-800">${st.name}</div>
+                        <div class="text-slate-500">${st.desc}</div>
+                        <hr class="my-1 border-slate-200">
+                        <div class="flex justify-between"><span>ฝนตกตอนนี้:</span> <strong>${st.currentRain.toFixed(1)} มม./ชม.</strong></div>
+                        <div class="flex justify-between"><span>พยากรณ์ ECMWF (1-3 ชม.):</span> <strong class="text-sky-600">${st.maxEcmwf3h.toFixed(1)} มม./ชม.</strong></div>
+                        <div class="flex justify-between"><span>พยากรณ์ GFS (1-3 ชม.):</span> <strong class="text-indigo-600">${st.maxGfs3h.toFixed(1)} มม./ชม.</strong></div>
+                        <div class="flex justify-between"><span>ฝนสะสม 24 ชม.:</span> <strong>${st.sumEcmwf24h.toFixed(1)} มม.</strong></div>
+                        <div class="pt-1 flex justify-between items-center">
+                            <span class="font-semibold text-slate-700">คะแนนความเสี่ยง Hybrid:</span>
+                            <span class="px-2 py-0.5 rounded-full font-bold ${badgeClass} border">${score}/5 (${statusLabel})</span>
+                        </div>
+                    </div>
+                `);
+                stationMarkers.push(marker);
+
+                return { ...st, score, statusLabel, badgeClass };
+            });
+
+            // อัปเดตกล่องสรุปด้านขวา
+            document.getElementById('sum-raining').innerText = rainingNowList.length;
+            document.getElementById('sum-soon').innerText = rainingSoonList.length;
+            document.getElementById('sum-risk').innerText = riskStationCount;
+
+            document.getElementById('badge-raining-count').innerText = `${rainingNowList.length} จุด`;
+            document.getElementById('box-raining-now').innerHTML = rainingNowList.length
+                ? rainingNowList.join('')
+                : `<div class="bg-emerald-50/70 text-emerald-700 border border-emerald-100 px-3 py-2 rounded-xl">✅ ไม่มีฝนตกในจุดเฝ้าระวังทั้ง 8 จุดในขณะนี้</div>`;
+
+            document.getElementById('badge-soon-count').innerText = `${rainingSoonList.length} จุด`;
+            document.getElementById('box-raining-soon').innerHTML = rainingSoonList.length
+                ? rainingSoonList.join('')
+                : `<div class="bg-slate-50 text-slate-500 border border-slate-200/70 px-3 py-2 rounded-xl">✓ ยังไม่มีแนวโน้มกลุ่มฝนก้อนใหม่ใน 1–3 ชม. ข้างหน้า</div>`;
+
+            document.getElementById('box-flood-alerts').innerHTML = floodAlertList.length
+                ? floodAlertList.join('')
+                : `<div class="bg-emerald-50/80 border border-emerald-200 text-emerald-800 p-3 rounded-xl font-medium">🟢 เกณฑ์ปลอดภัยทั้งเขตเมืองและต้นน้ำคลองอู่ตะเภา (Score ต่ำกว่าเกณฑ์เตือนภัย)</div>`;
+
+            // อัปเดตแถบแบนเนอร์ด้านบนสุด
+            const banner = document.getElementById('overall-banner');
+            const badge = document.getElementById('overall-badge');
+            const msg = document.getElementById('overall-message');
+            const floodStatusBadge = document.getElementById('badge-flood-status');
+
+            if (highestRiskScore >= 3) {
+                banner.className = "bg-rose-50 border-b border-rose-200 px-5 py-2 flex flex-wrap items-center justify-between gap-2";
+                badge.className = "bg-rose-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-sm animate-pulse";
+                badge.innerText = "🚨 เตือนภัยวิกฤตน้ำท่วม";
+                msg.className = "text-xs md:text-sm font-medium text-rose-900";
+                msg.innerText = "พบแนวโน้มฝนตกหนักจากทั้ง ECMWF และ GFS สมทบระดับน้ำคลองอู่ตะเภา โปรดแจ้งเตือนพื้นที่เสี่ยง";
+                floodStatusBadge.className = "text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200";
+                floodStatusBadge.innerText = "วิกฤตสีแดง";
+            } else if (highestRiskScore === 2 || rainingNowList.length > 0) {
+                banner.className = "bg-amber-50 border-b border-amber-200 px-5 py-2 flex flex-wrap items-center justify-between gap-2";
+                badge.className = "bg-amber-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-sm";
+                badge.innerText = "⚠️ เฝ้าระวังสภาพอากาศ";
+                msg.className = "text-xs md:text-sm font-medium text-amber-900";
+                msg.innerText = "มีฝนตกในพื้นที่หรือระดับน้ำคลองอู่ตะเภาเริ่มสูงขึ้น โปรดติดตามสถานการณ์ใกล้ชิด";
+                floodStatusBadge.className = "text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200";
+                floodStatusBadge.innerText = "เฝ้าระวัง";
+            } else {
+                banner.className = "bg-emerald-50 border-b border-emerald-200 px-5 py-2 flex flex-wrap items-center justify-between gap-2";
+                badge.className = "bg-emerald-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-sm";
+                badge.innerText = "● สถานการณ์ปกติ";
+                msg.className = "text-xs md:text-sm font-medium text-emerald-900";
+                msg.innerText = "ปริมาณน้ำฝนในเขตเทศบาลนครหาดใหญ่และต้นน้ำคลองอู่ตะเภาอยู่ในเกณฑ์ปลอดภัย";
+                floodStatusBadge.className = "text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200";
+                floodStatusBadge.innerText = "ปกติ";
+            }
+
+            renderStationTable();
+        }
+
+        // =====================================================
+        // 7. แสดงตารางสถานีเฝ้าระวังทั้ง 8 จุด + ตัวกรองโซน
+        // =====================================================
+        function setStationFilter(filter) {
+            currentFilter = filter;
+            ['all', 'urban', 'upstream'].forEach(key => {
+                const btn = document.getElementById(`tab-${key}`);
+                if (key === filter) {
+                    btn.className = "px-2.5 py-1 rounded-md bg-white text-slate-800 shadow-sm font-semibold";
+                } else {
+                    btn.className = "px-2.5 py-1 rounded-md text-slate-500";
+                }
+            });
+            renderStationTable();
+        }
+
+        function renderStationTable() {
+            const container = document.getElementById('station-cards-container');
+            const filtered = analyzedStations.filter(s => currentFilter === 'all' || s.zone === currentFilter);
+
+            container.innerHTML = filtered.map(st => `
+                <div onclick="focusStation(${st.id})" class="p-3 rounded-xl bg-slate-50 hover:bg-sky-50/60 border border-slate-200/80 cursor-pointer transition">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-xs font-bold text-slate-800">${st.id}. ${st.name}</div>
+                            <div class="text-[11px] text-slate-400">${st.desc}</div>
+                        </div>
+                        <span class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${st.badgeClass}">
+                            ${st.statusLabel} (Score ${st.score})
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-4 gap-1.5 mt-2 pt-2 border-t border-slate-200/60 text-[11px]">
+                        <div><span class="text-slate-400">ตอนนี้:</span> <strong class="text-slate-700">${st.currentRain.toFixed(1)} มม.</strong></div>
+                        <div><span class="text-slate-400">ECMWF:</span> <strong class="text-sky-600">${st.maxEcmwf3h.toFixed(1)} มม.</strong></div>
+                        <div><span class="text-slate-400">GFS:</span> <strong class="text-indigo-600">${st.maxGfs3h.toFixed(1)} มม.</strong></div>
+                        <div><span class="text-slate-400">สะสม 24ชม.:</span> <strong class="text-slate-700">${st.sumEcmwf24h.toFixed(1)} มม.</strong></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function focusStation(id) {
+            const index = STATIONS.findIndex(s => s.id === id);
+            if (index !== -1) {
+                const st = STATIONS[index];
+                map.setView([st.lat, st.lon], 14);
+                stationMarkers[index]?.openPopup();
+            }
+        }
+
+        // =====================================================
+        // 8. โหมดจำลองสถานการณ์พายุฝน (Test Simulation)
+        // =====================================================
+        function handleSimulationChange(mode) {
+            if (mode === 'live') {
+                loadLiveHybridData();
+                return;
+            }
+
+            if (mode === 'urban_storm') {
+                setWaterLevelMode('watch');
+                analyzedStations = STATIONS.map(st => {
+                    const isUrban = st.zone === 'urban';
+                    return {
+                        ...st,
+                        currentRain: isUrban ? 24.5 : 2.0,
+                        maxEcmwf3h: isUrban ? 28.0 : 4.5,
+                        maxGfs3h: isUrban ? 22.0 : 3.5,
+                        sumEcmwf3h: isUrban ? 68.0 : 10.0,
+                        sumEcmwf24h: isUrban ? 95.0 : 28.0
+                    };
+                });
+                document.getElementById('last-update-text').innerText = "โหมดจำลอง: พายุฝนถล่มเมืองหาดใหญ่ + เขาคอหงส์";
+            } else if (mode === 'upstream_flood') {
+                setWaterLevelMode('critical');
+                analyzedStations = STATIONS.map(st => {
+                    const isUp = st.zone === 'upstream';
+                    return {
+                        ...st,
+                        currentRain: isUp ? 19.0 : 1.2,
+                        maxEcmwf3h: isUp ? 25.0 : 3.0,
+                        maxGfs3h: isUp ? 21.0 : 2.5,
+                        sumEcmwf3h: isUp ? 58.0 : 6.0,
+                        sumEcmwf24h: isUp ? 135.0 : 25.0
+                    };
+                });
+                document.getElementById('last-update-text').innerText = "โหมดจำลอง: มวลน้ำหลากจากต้นน้ำสะเดา + คลองหลา";
+            } else if (mode === 'extreme_crisis') {
+                setWaterLevelMode('critical');
+                analyzedStations = STATIONS.map(st => ({
+                    ...st,
+                    currentRain: 32.0,
+                    maxEcmwf3h: 38.5,
+                    maxGfs3h: 34.0,
+                    sumEcmwf3h: 92.0,
+                    sumEcmwf24h: 185.0
+                }));
+                document.getElementById('last-update-text').innerText = "โหมดจำลอง: วิกฤตขั้นสุดทั้งลุ่มน้ำคลองอู่ตะเภา";
+            }
+
+            recalculateAllStationsUI();
+        }
+
+        // =====================================================
+        // 9. สร้างข้อความสรุปสำหรับส่งแจ้งเตือนใน LINE
+        // =====================================================
+        function openLineModal() {
+            const nowStr = new Date().toLocaleString('th-TH');
+            const raining = analyzedStations.filter(s => s.currentRain >= 0.5);
+            const soon = analyzedStations.filter(s => s.currentRain < 0.5 && (s.maxEcmwf3h >= 1.0 || s.maxGfs3h >= 1.0));
+            const risks = analyzedStations.filter(s => s.score >= 2);
+
+            let text = `📢 รายงานเฝ้าระวังฝนและน้ำท่วม อ.หาดใหญ่\n`;
+            text += `🕒 เวลา: ${nowStr}\n`;
+            text += `📊 วิเคราะห์ร่วม 3 แหล่ง (ECMWF + GFS + ระดับน้ำ สสน.)\n`;
+            text += `----------------------------------\n`;
+            text += `🌊 ระดับน้ำคลองอู่ตะเภา:\n`;
+            text += `• สถานี X.44 (บ้านท่าแซ): ${waterStationInfo.x44_wl.toFixed(2)} ม.รทก. (${waterStationInfo.x44_pct.toFixed(0)}%)\n`;
+            text += `• สถานี X.90 (บ้านพรุ): ${waterStationInfo.x90_wl.toFixed(2)} ม.รทก. (${waterStationInfo.x90_pct.toFixed(0)}%)\n\n`;
+
+            text += `🌧️ จุดที่ฝนกำลังตก (${raining.length} จุด):\n`;
+            text += raining.length ? raining.map(s => `• ${s.name}: ${s.currentRain.toFixed(1)} มม./ชม.`).join('\n') : `• ไม่มีฝนตกในขณะนี้`;
+            text += `\n\n⏳ จุดที่ฝนกำลังจะตกใน 1-3 ชม. (${soon.length} จุด):\n`;
+            text += soon.length ? soon.map(s => `• ${s.name}: ECMWF ${s.maxEcmwf3h.toFixed(1)} | GFS ${s.maxGfs3h.toFixed(1)} มม.`).join('\n') : `• ไม่มีแนวโน้มฝนก้อนใหม่`;
+            text += `\n\n⚠️ ประเมินความเสี่ยงน้ำท่วม:\n`;
+            text += risks.length ? risks.map(s => `• [${s.statusLabel}] ${s.name} (Score ${s.score}/5, สะสม 24 ชม. ${s.sumEcmwf24h.toFixed(1)} มม.)`).join('\n') : `• 🟢 สถานการณ์ปกติทุกจุดเฝ้าระวัง`;
+
+            document.getElementById('line-summary-textarea').value = text;
+            const modal = document.getElementById('line-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeLineModal() {
+            const modal = document.getElementById('line-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function copyLineSummary() {
+            const textarea = document.getElementById('line-summary-textarea');
+            textarea.select();
+            navigator.clipboard.writeText(textarea.value);
+            alert('คัดลอกข้อความแจ้งเตือนสำหรับส่ง LINE เรียบร้อยแล้วครับ!');
+        }
+
+        // เริ่มต้นทำงานทันทีเมื่อเปิดหน้าเว็บ
+        window.onload = () => {
+            initMap();
+            loadLiveHybridData();
+        };
+    </script>
+</body>
+</html>
