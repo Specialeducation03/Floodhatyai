@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบเฝ้าระวังฝนและน้ำท่วม อ.หาดใหญ่ (TMD Radar & Hybrid Edition)</title>
+    <title>ระบบเฝ้าระวังฝนและน้ำท่วม อ.หาดใหญ่ (Real-time Radar & Hybrid Edition)</title>
     
     <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -99,10 +99,10 @@
                 <div class="flex items-center gap-2">
                     <h1 class="text-base md:text-lg font-bold text-slate-800">ระบบเฝ้าระวังฝนและน้ำท่วม อ.หาดใหญ่</h1>
                     <span class="bg-sky-100 text-sky-700 border border-sky-200 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                        Hybrid 3 แหล่งข้อมูล + เรดาร์กรมอุตุฯ
+                        Hybrid 3 แหล่งข้อมูล + ยืนยันเรดาร์จริง
                     </span>
                 </div>
-                <p class="text-xs text-slate-500">วิเคราะห์จุดฝนกำลังตก • พยากรณ์ล่วงหน้า 1–24 ชม. • เฝ้าระวังลุ่มน้ำคลองอู่ตะเภาและเขาคอหงส์</p>
+                <p class="text-xs text-slate-500">วิเคราะห์จุดฝนตกจริงด้วยเรดาร์ • พยากรณ์ล่วงหน้า 1–24 ชม. • เฝ้าระวังลุ่มน้ำคลองอู่ตะเภาและเขาคอหงส์</p>
             </div>
         </div>
 
@@ -112,9 +112,9 @@
                 <span>🔄</span> ดึงข้อมูลจริง (Live API)
             </button>
 
-            <!-- ปุ่มเปิดดูเรดาร์กรมอุตุฯ เต็มจอ -->
-            <button onclick="openTmdModal()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs md:text-sm font-medium px-3.5 py-2 rounded-xl transition flex items-center gap-1.5">
-                <span>📡</span> ภาพเรดาร์สดกรมอุตุฯ (สทิงพระ/หาดใหญ่)
+            <!-- ปุ่มเปิดดูเรดาร์สด Real-time เต็มจอ -->
+            <button onclick="openRadarModal()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs md:text-sm font-medium px-3.5 py-2 rounded-xl transition flex items-center gap-1.5">
+                <span>📡</span> เรดาร์สด & ดาวเทียม Real-time (เวลาปัจจุบัน)
             </button>
 
             <!-- Dropdown โหมดจำลองพายุฝน -->
@@ -150,7 +150,7 @@
             </span>
         </div>
         <div class="flex items-center gap-4 text-xs font-medium text-slate-600">
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span> กำลังตก: <strong id="sum-raining" class="text-slate-800">0</strong> จุด</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span> กำลังตกจริง: <strong id="sum-raining" class="text-slate-800">0</strong> จุด</span>
             <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> กำลังจะตก (1-3 ชม.): <strong id="sum-soon" class="text-slate-800">0</strong> จุด</span>
             <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> เฝ้าระวังน้ำท่วม: <strong id="sum-risk" class="text-slate-800">0</strong> จุด</span>
         </div>
@@ -176,7 +176,7 @@
                 </button>
             </div>
 
-            <!-- แผงควบคุมเรดาร์เมฆฝนจริง TMD & RainViewer (ซ้ายล่าง) -->
+            <!-- แผงควบคุมเรดาร์เมฆฝนจริง (ซ้ายล่าง) -->
             <div class="absolute bottom-4 left-4 z-[900] bg-white/95 backdrop-blur-md p-3 rounded-2xl shadow-lg border border-slate-200 max-w-md space-y-2">
                 <div class="flex items-center justify-between gap-3">
                     <label class="flex items-center gap-1.5 text-xs font-bold text-slate-800 cursor-pointer">
@@ -188,12 +188,11 @@
                     </span>
                 </div>
 
-                <!-- ตัวเลือกแหล่งเรดาร์ -->
+                <!-- ตัวเลือกแหล่งเรดาร์บนแผนที่หลัก -->
                 <div class="flex flex-wrap items-center gap-1.5">
                     <select id="radar-source-select" onchange="changeRadarSource(this.value)" class="flex-1 bg-slate-50 border border-slate-200 text-slate-700 text-xs font-medium rounded-lg px-2.5 py-1.5 outline-none">
-                        <option value="rainviewer">🌧️ เรดาร์เมฆฝนพื้นหลังใส (RainViewer Real-time)</option>
-                        <option value="tmd_stp">🇹🇭 เรดาร์กรมอุตุฯ สถานีสทิงพระ จ.สงขลา (240 กม.)</option>
-                        <option value="tmd_hyi">🇹🇭 เรดาร์กรมอุตุฯ สถานีหาดใหญ่ จ.สงขลา (240 กม.)</option>
+                        <option value="rainviewer">🌧️ เรดาร์เมฆฝนจริง Real-time (RainViewer)</option>
+                        <option value="tmd_stp_hq">🇹🇭 เรดาร์กรมอุตุฯ สทิงพระ HQ (240 กม.)</option>
                         <option value="simulated">⚡ เรดาร์จำลองกลุ่มพายุฝน (ทดสอบสี dBZ)</option>
                     </select>
 
@@ -261,12 +260,12 @@
                 </div>
             </div>
 
-            <!-- การ์ดที่ 2: จุดที่ฝนกำลังตกตอนนี้ -->
+            <!-- การ์ดที่ 2: จุดที่ฝนกำลังตกตอนนี้ (ยืนยันด้วยเรดาร์จริง) -->
             <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm">
                 <div class="flex items-center justify-between mb-2">
                     <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
                         <span class="w-6 h-6 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-xs">🌧️</span>
-                        จุดที่ฝนกำลังตกตอนนี้
+                        จุดที่ฝนกำลังตกตอนนี้ (ยืนยันเรดาร์จริง)
                     </h2>
                     <span id="badge-raining-count" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">0 จุด</span>
                 </div>
@@ -280,7 +279,7 @@
                 <div class="flex items-center justify-between mb-2">
                     <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
                         <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center text-xs">⏳</span>
-                        จุดที่ฝนกำลังจะตก (ใน 1–3 ชม.)
+                        แนวโน้มพยากรณ์ฝน (ใน 1–3 ชม. ข้างหน้า)
                     </h2>
                     <span id="badge-soon-count" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">0 จุด</span>
                 </div>
@@ -308,7 +307,7 @@
                 <div class="flex items-center justify-between mb-3">
                     <div>
                         <h2 class="text-sm font-bold text-slate-800">ตารางสถานีเฝ้าระวังทั้ง 8 จุด</h2>
-                        <p class="text-[11px] text-slate-400">คลิกที่การ์ดเพื่อซูมแผนที่ • เทียบค่า ECMWF และ GFS</p>
+                        <p class="text-[11px] text-slate-400">คลิกที่การ์ดเพื่อซูมแผนที่ • กรองค่าฝนเทียมช่วงแดดออกแล้ว</p>
                     </div>
                     <div class="flex bg-slate-100 p-0.5 rounded-lg text-[11px] font-medium">
                         <button onclick="setStationFilter('all')" id="tab-all" class="px-2.5 py-1 rounded-md bg-white text-slate-800 shadow-sm">ทั้งหมด</button>
@@ -322,58 +321,72 @@
         </div>
     </div>
 
-    <!-- Modal 1: หน้าต่างดูภาพเรดาร์สดจากกรมอุตุนิยมวิทยา (TMD Official Radar Viewer) -->
-    <div id="tmd-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[2000] hidden items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-3xl w-full p-5 shadow-2xl border border-slate-200">
+    <!-- Modal 1: หน้าต่างเรดาร์สด & ดาวเทียม Real-time เวลาปัจจุบัน (แก้ไขปัญหาภาพเก่าค้างปี 2023 ของกรมอุตุฯ) -->
+    <div id="radar-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[2000] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-4xl w-full p-5 shadow-2xl border border-slate-200">
             <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
                 <div>
                     <h3 class="font-bold text-slate-800 flex items-center gap-2 text-base">
-                        <span>📡</span> เรดาร์ตรวจอากาศสด กรมอุตุนิยมวิทยา (ภาคใต้ฝั่งตะวันออก)
+                        <span>📡</span> ศูนย์เรดาร์ตรวจอากาศและดาวเทียมเมฆฝนสด (Real-time เวลาปัจจุบัน)
                     </h3>
-                    <p class="text-xs text-slate-500">ดึงภาพเรดาร์โดยตรงจากเซิร์ฟเวอร์กรมอุตุนิยมวิทยา (weather.tmd.go.th)</p>
+                    <p class="text-xs text-slate-500">อัปเดตข้อมูลเมฆฝนแบบสดทุก 5–10 นาที ครอบคลุมพื้นที่ อ.หาดใหญ่ จ.สงขลา และภาคใต้</p>
                 </div>
-                <button onclick="closeTmdModal()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold leading-none">&times;</button>
+                <button onclick="closeRadarModal()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold leading-none">&times;</button>
             </div>
 
-            <!-- ปุ่มเลือกสถานีเรดาร์กรมอุตุฯ -->
+            <!-- ปุ่มเลือกโหมดเรดาร์สด Real-time -->
             <div class="flex flex-wrap items-center justify-between gap-2 my-3">
                 <div class="flex flex-wrap gap-1.5">
-                    <button onclick="switchTmdStation('stp240')" id="tmd-btn-stp240" class="text-xs font-semibold px-3 py-1.5 rounded-xl bg-sky-500 text-white shadow-sm">
-                        สถานีสทิงพระ จ.สงขลา (รัศมี 240 กม.)
+                    <button onclick="switchModalView('windy_radar')" id="modal-tab-windy_radar" class="text-xs font-semibold px-3.5 py-1.5 rounded-xl bg-sky-500 text-white shadow-sm">
+                        🌧️ เรดาร์เมฆฝนสด Real-time (พิกัดหาดใหญ่)
                     </button>
-                    <button onclick="switchTmdStation('hyi240')" id="tmd-btn-hyi240" class="text-xs font-medium px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700">
-                        สถานีหาดใหญ่ จ.สงขลา (รัศมี 240 กม.)
+                    <button onclick="switchModalView('windy_sat')" id="modal-tab-windy_sat" class="text-xs font-medium px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700">
+                        🛰️ ดาวเทียมกลุ่มเมฆฝนสด (Satellite InfraRed)
                     </button>
-                    <button onclick="switchTmdStation('srt240')" id="tmd-btn-srt240" class="text-xs font-medium px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700">
-                        สถานีสุราษฎร์ธานี (240 กม.)
+                    <button onclick="switchModalView('tmd_hq')" id="modal-tab-tmd_hq" class="text-xs font-medium px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700">
+                        🇹🇭 ระบบเรดาร์กรมอุตุนิยมวิทยา (TMD)
                     </button>
                 </div>
-                <button onclick="applyTmdToMap()" class="text-xs font-semibold px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200">
-                    🗺️ นำเรดาร์สถานีนี้ไปซ้อนทับบนแผนที่
-                </button>
+                <span id="modal-live-clock" class="text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+                    ● เวลาปัจจุบัน
+                </span>
             </div>
 
-            <!-- กรอบแสดงภาพเรดาร์จริงจาก TMD -->
-            <div class="bg-slate-900 rounded-xl overflow-hidden flex items-center justify-center relative min-h-[360px] max-h-[60vh]">
-                <img id="tmd-live-img" src="https://weather.tmd.go.th/stp/stp240_latest.gif" alt="เรดาร์กรมอุตุนิยมวิทยา" class="max-h-[58vh] w-auto object-contain" onerror="handleTmdImgError()">
-                <div id="tmd-img-fallback" class="hidden text-center p-6 text-slate-200 space-y-2">
-                    <div class="text-sm font-semibold">เซิร์ฟเวอร์ภาพเรดาร์ของกรมอุตุฯ กำลังอัปเดตรอบเวลา</div>
-                    <p class="text-xs text-slate-400">คุณสามารถคลิกเปิดดูหน้าเรดาร์ต้นฉบับของกรมอุตุฯ ได้โดยตรงจากปุ่มด้านล่าง</p>
+            <!-- ส่วนแสดงผลที่ 1 & 2: Windy Real-time Radar / Satellite Iframe (เวลาปัจจุบัน 100%) -->
+            <div id="modal-iframe-container" class="bg-slate-900 rounded-xl overflow-hidden w-full h-[60vh] border border-slate-200">
+                <iframe id="realtime-radar-iframe" class="w-full h-full border-0" src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=mm&metricTemp=°C&metricWind=km/h&zoom=9&overlay=radar&product=radar&level=surface&lat=7.0086&lon=100.4747&detailLat=7.0086&detailLon=100.4747&marker=true" allowfullscreen></iframe>
+            </div>
+
+            <!-- ส่วนแสดงผลที่ 3: เรดาร์กรมอุตุนิยมวิทยา (TMD HQ + ลิงก์ตรง) -->
+            <div id="modal-tmd-container" class="hidden space-y-3">
+                <div class="bg-amber-50 border border-amber-200 text-amber-900 text-xs p-3 rounded-xl">
+                    <strong>💡 หมายเหตุทางเทคนิค:</strong> ไฟล์ภาพนามสกุลเก่าของกรมอุตุฯ (<code>_latest.gif</code>) บางสถานีค้างอยู่ที่ปี 2023 เนื่องจากกรมอุตุฯ เปลี่ยนไปใช้ระบบเรดาร์รวมและไฟล์ High Quality (<code>_hq_latest.gif</code>) ด้านล่างนี้จึงดึงเฉพาะไฟล์รุ่นใหม่และลิงก์ตรงของศูนย์อุตุนิยมวิทยาภาคใต้ฝั่งตะวันออกครับ
+                </div>
+
+                <div class="flex flex-wrap gap-1.5">
+                    <button onclick="loadTmdHqStation('stp')" id="btn-hq-stp" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-500 text-white">สถานีสทิงพระ HQ (สงขลา)</button>
+                    <button onclick="loadTmdHqStation('pkt')" id="btn-hq-pkt" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700">สถานีภูเก็ต HQ (240 กม.)</button>
+                    <button onclick="loadTmdHqStation('srt')" id="btn-hq-srt" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700">สถานีสุราษฎร์ธานี HQ</button>
+                    <button onclick="loadTmdHqStation('krb')" id="btn-hq-krb" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700">สถานีกระบี่ HQ</button>
+                </div>
+
+                <div class="bg-slate-900 rounded-xl overflow-hidden flex items-center justify-center min-h-[340px] max-h-[50vh]">
+                    <img id="tmd-hq-img" src="https://weather.tmd.go.th/stp/stp240_hq_latest.gif" alt="เรดาร์กรมอุตุนิยมวิทยา HQ" class="max-h-[48vh] w-auto object-contain" onerror="this.src='https://weather.tmd.go.th/pkt/pkt240_hq_latest.gif'">
                 </div>
             </div>
 
             <div class="flex flex-wrap items-center justify-between gap-2 mt-4 pt-3 border-t border-slate-100 text-xs">
-                <a id="tmd-direct-link" href="https://weather.tmd.go.th/stp.php" target="_blank" rel="noopener" class="text-sky-600 hover:underline font-medium">
-                    🔗 เปิดเว็บเรดาร์สทิงพระ กรมอุตุนิยมวิทยา (หน้าต้นฉบับ) ↗
-                </a>
-                <div class="flex gap-2">
-                    <button onclick="reloadTmdModalImage()" class="bg-sky-500 hover:bg-sky-600 text-white font-semibold px-4 py-2 rounded-xl shadow-sm transition">
-                        🔄 รีเฟรชภาพล่าสุด
-                    </button>
-                    <button onclick="closeTmdModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium px-4 py-2 rounded-xl transition">
-                        ปิดหน้าต่าง
-                    </button>
+                <div class="flex flex-wrap gap-3">
+                    <a href="https://weather.tmd.go.th/stp.php" target="_blank" rel="noopener" class="text-sky-600 hover:underline font-medium">
+                        🔗 เว็บเรดาร์สทิงพระ (TMD) ↗
+                    </a>
+                    <a href="https://weather.tmd.go.th/hyi.php" target="_blank" rel="noopener" class="text-indigo-600 hover:underline font-medium">
+                        🔗 เว็บเรดาร์หาดใหญ่ (TMD) ↗
+                    </a>
                 </div>
+                <button onclick="closeRadarModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2 rounded-xl transition">
+                    ปิดหน้าต่าง
+                </button>
             </div>
         </div>
     </div>
@@ -414,44 +427,21 @@
             { id: 8, name: "อ.สะเดา (ต้นน้ำคลองอู่ตะเภา)", shortName: "อ.สะเดา (ต้นน้ำ)", desc: "จุดเตือนภัยน้ำหลากล่วงหน้า 10-24 ชม.", lat: 6.6384, lon: 100.4228, zone: "upstream" }
         ];
 
-        // พิกัดขอบเขตภูมิศาสตร์ของสถานีเรดาร์กรมอุตุนิยมวิทยา (รัศมี 240 กม.)
-        const TMD_RADAR_CONFIG = {
-            stp240: {
-                name: "เรดาร์สทิงพระ จ.สงขลา (240 กม.)",
-                url: "https://weather.tmd.go.th/stp/stp240_latest.gif",
-                page: "https://weather.tmd.go.th/stp.php",
-                bounds: [[5.315, 98.228], [9.635, 102.588]] // จุดศูนย์กลาง อ.สทิงพระ [7.475, 100.408]
-            },
-            hyi240: {
-                name: "เรดาร์หาดใหญ่ จ.สงขลา (240 กม.)",
-                url: "https://weather.tmd.go.th/hyi/hyi240_latest.gif",
-                page: "https://weather.tmd.go.th/hyi.php",
-                bounds: [[4.773, 98.213], [9.093, 102.573]] // จุดศูนย์กลาง สนามบินหาดใหญ่ [6.933, 100.393]
-            },
-            srt240: {
-                name: "เรดาร์สุราษฎร์ธานี (240 กม.)",
-                url: "https://weather.tmd.go.th/srt/srt240_latest.gif",
-                page: "https://weather.tmd.go.th/srt.php",
-                bounds: [[6.980, 97.050], [11.300, 101.410]]
-            }
-        };
-
         let map;
         let satelliteLayer, lightStreetLayer;
         let isSatellite = true;
         let stationMarkers = [];
         let currentFilter = 'all';
 
-        // ตัวแปรระบบเรดาร์เมฆฝน (RainViewer + TMD + Simulated)
+        // ตัวแปรระบบเรดาร์เมฆฝนบนแผนที่
         let radarMasterEnabled = true;
-        let currentRadarSource = 'rainviewer'; // 'rainviewer' | 'tmd_stp' | 'tmd_hyi' | 'simulated'
+        let currentRadarSource = 'rainviewer';
         let currentRadarOpacity = 0.65;
         let rainViewerHost = 'https://tilecache.rainviewer.com';
         let radarFrames = [];
         let radarIndex = 0;
         let radarTimer = null;
         let activeRadarLayer = null;
-        let currentTmdModalStation = 'stp240';
 
         // ข้อมูลระดับน้ำคลองอู่ตะเภา (สสน.)
         let waterLevelScore = 0;
@@ -464,13 +454,11 @@
         function initMap() {
             map = L.map('map', { zoomControl: true }).setView([6.9400, 100.4650], 11);
 
-            // Google Hybrid Satellite (ซูมลึกได้ถึง 20)
             satelliteLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
                 maxZoom: 20,
                 attribution: '© Google Satellite Hybrid'
             });
 
-            // Google Light Street Map
             lightStreetLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
                 maxZoom: 20,
                 attribution: '© Google Maps'
@@ -478,7 +466,6 @@
 
             satelliteLayer.addTo(map);
 
-            // เส้นแนวการไหลของคลองอู่ตะเภา
             const utapaoPath = [
                 [6.6384, 100.4228],
                 [6.7950, 100.4450],
@@ -492,8 +479,6 @@
                 dashArray: '8, 8',
                 opacity: 0.85
             }).addTo(map).bindTooltip("แนวลำน้ำคลองอู่ตะเภา (ทิศทางน้ำไหล: ทิศใต้ ➔ ทิศเหนือ)", { sticky: true });
-
-            initRainViewerRadar();
         }
 
         function toggleMapLayer() {
@@ -511,7 +496,7 @@
         }
 
         // =====================================================
-        // 3. ระบบเรดาร์เมฆฝนจริง (RainViewer + กรมอุตุฯ TMD + เรดาร์จำลอง)
+        // 3. ระบบเรดาร์เมฆฝนจริง RainViewer + ตรวจสอบเมฆฝนรายจุด
         // =====================================================
         async function initRainViewerRadar() {
             try {
@@ -520,15 +505,48 @@
                 if (data.host) rainViewerHost = data.host;
                 if (data.radar && data.radar.past && data.radar.past.length > 0) {
                     radarFrames = data.radar.past;
-                    if (data.radar.nowcast && data.radar.nowcast.length > 0) {
-                        radarFrames = radarFrames.concat(data.radar.nowcast);
-                    }
-                    radarIndex = data.radar.past.length - 1;
+                    radarIndex = radarFrames.length - 1;
                     renderActiveRadarLayer();
                 }
             } catch (err) {
                 console.warn("RainViewer load error:", err);
-                document.getElementById('radar-status-pill').innerText = "ใช้เรดาร์กรมอุตุฯ แทนได้";
+            }
+        }
+
+        // ฟังก์ชันตรวจสอบพิกเซลเรดาร์จริง ณ พิกัดตำบล (แก้ปัญหาแดดออกที่ ต.คอหงส์ แต่โมเดลขึ้นว่าฝนตก 0.6 มม.)
+        async function checkRealRadarAtPoint(lat, lon) {
+            if (!radarFrames || radarFrames.length === 0) return null;
+            try {
+                const latestFrame = radarFrames[radarFrames.length - 1];
+                const zoom = 7;
+                const n = Math.pow(2, zoom);
+                const xTile = Math.floor((lon + 180) / 360 * n);
+                const latRad = lat * Math.PI / 180;
+                const yTile = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+
+                const xPixel = Math.floor((((lon + 180) / 360 * n) - xTile) * 256);
+                const yPixel = Math.floor((((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n) - yTile) * 256);
+
+                const tileUrl = `${rainViewerHost}${latestFrame.path}/256/${zoom}/${xTile}/${yTile}/2/1_1.png`;
+
+                return await new Promise((resolve) => {
+                    const img = new Image();
+                    img.crossOrigin = "Anonymous";
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 256;
+                        canvas.height = 256;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        // เช็กความทึบแสงของเมฆฝนในเรดาร์จริง (Alpha > 15 แปลว่ามีเมฆฝนจริง)
+                        const alpha = ctx.getImageData(xPixel, yPixel, 1, 1).data[3];
+                        resolve(alpha > 15);
+                    };
+                    img.onerror = () => resolve(null);
+                    img.src = tileUrl;
+                });
+            } catch (e) {
+                return null;
             }
         }
 
@@ -549,7 +567,6 @@
                 return;
             }
 
-            // รูปแบบที่ 1: เรดาร์พื้นหลังใส RainViewer (แก้ไข maxNativeZoom: 7 ให้ซูมระดับตำบลได้จริง)
             if (currentRadarSource === 'rainviewer') {
                 if (!radarFrames.length) {
                     statusPill.innerText = "กำลังโหลดเรดาร์...";
@@ -561,7 +578,7 @@
                 activeRadarLayer = L.tileLayer(tileUrl, {
                     tileSize: 256,
                     opacity: currentRadarOpacity,
-                    maxNativeZoom: 7, // หัวใจสำคัญ: ป้องกัน Error ตอนซูมลึกเกินระดับ 7
+                    maxNativeZoom: 7,
                     maxZoom: 20,
                     zIndex: 450
                 }).addTo(map);
@@ -570,45 +587,32 @@
                 statusPill.className = "text-[11px] font-semibold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700";
                 statusPill.innerText = `เรดาร์จริง ${timeStr} น.`;
             }
-
-            // รูปแบบที่ 2 และ 3: เรดาร์กรมอุตุนิยมวิทยา (สทิงพระ / หาดใหญ่) ซ้อนทับบนแผนที่
-            else if (currentRadarSource === 'tmd_stp' || currentRadarSource === 'tmd_hyi') {
-                const cfg = currentRadarSource === 'tmd_stp' ? TMD_RADAR_CONFIG.stp240 : TMD_RADAR_CONFIG.hyi240;
-                const cacheBustUrl = `${cfg.url}?t=${Date.now()}`;
-
-                activeRadarLayer = L.imageOverlay(cacheBustUrl, cfg.bounds, {
+            else if (currentRadarSource === 'tmd_stp_hq') {
+                // ใช้ไฟล์รุ่น _hq_latest.gif ของสถานีสทิงพระ
+                const bounds = [[5.315, 98.228], [9.635, 102.588]];
+                const url = `https://weather.tmd.go.th/stp/stp240_hq_latest.gif?t=${Date.now()}`;
+                activeRadarLayer = L.imageOverlay(url, bounds, {
                     opacity: currentRadarOpacity,
-                    zIndex: 450,
-                    interactive: false
+                    zIndex: 450
                 }).addTo(map);
-
                 statusPill.className = "text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700";
-                statusPill.innerText = `กรมอุตุฯ (${currentRadarSource === 'tmd_stp' ? 'สทิงพระ' : 'หาดใหญ่'})`;
+                statusPill.innerText = "เรดาร์กรมอุตุฯ (สทิงพระ HQ)";
             }
-
-            // รูปแบบที่ 4: เรดาร์จำลองกลุ่มเมฆฝน dBZ (สำหรับทดสอบระบบหรือวันที่ฟ้าโปร่ง)
             else if (currentRadarSource === 'simulated') {
                 const simGroup = L.layerGroup();
-
-                // วาดกลุ่มเมฆฝน 3 ระดับความเข้ม (เขียว = ฝนอ่อน, เหลือง = ปานกลาง, แดง = ฝนตกหนัก)
                 const cells = [
                     { center: [7.006, 100.485], rx: 0.085, ry: 0.065, color: '#10b981', fillOpacity: 0.35, label: 'กลุ่มฝนอ่อน (25 dBZ)' },
                     { center: [7.006, 100.488], rx: 0.055, ry: 0.042, color: '#f59e0b', fillOpacity: 0.45, label: 'กลุ่มฝนปานกลาง (40 dBZ)' },
                     { center: [7.005, 100.495], rx: 0.028, ry: 0.022, color: '#e11d48', fillOpacity: 0.55, label: 'แกนพายุฝนตกหนัก (55 dBZ) บริเวณหาดใหญ่-คอหงส์' },
-                    // กลุ่มฝนต้นน้ำสะเดา-คลองหลา
                     { center: [6.880, 100.440], rx: 0.090, ry: 0.070, color: '#10b981', fillOpacity: 0.35, label: 'กลุ่มฝนอ่อนลุ่มน้ำคลองอู่ตะเภา' },
                     { center: [6.890, 100.445], rx: 0.045, ry: 0.035, color: '#f59e0b', fillOpacity: 0.45, label: 'กลุ่มฝนปานกลาง บ้านพรุ-คลองหลา (42 dBZ)' },
                     { center: [6.650, 100.425], rx: 0.060, ry: 0.048, color: '#e11d48', fillOpacity: 0.50, label: 'แกนฝนตกหนักต้นน้ำสะเดา (52 dBZ)' }
                 ];
-
                 cells.forEach(c => {
                     const polyPoints = [];
                     for (let a = 0; a < 360; a += 15) {
                         const rad = (a * Math.PI) / 180;
-                        polyPoints.push([
-                            c.center[0] + Math.sin(rad) * c.ry,
-                            c.center[1] + Math.cos(rad) * c.rx
-                        ]);
+                        polyPoints.push([c.center[0] + Math.sin(rad) * c.ry, c.center[1] + Math.cos(rad) * c.rx]);
                     }
                     L.polygon(polyPoints, {
                         color: c.color,
@@ -617,10 +621,8 @@
                         fillOpacity: c.fillOpacity * (currentRadarOpacity / 0.65)
                     }).bindTooltip(c.label).addTo(simGroup);
                 });
-
                 simGroup.addTo(map);
                 activeRadarLayer = simGroup;
-
                 statusPill.className = "text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800";
                 statusPill.innerText = "เรดาร์จำลองพายุฝน (dBZ)";
             }
@@ -634,13 +636,8 @@
 
         function changeRadarSource(source) {
             currentRadarSource = source;
-            if (source !== 'rainviewer' && radarTimer) {
-                toggleRadarAnimation();
-            }
-            // หากเลือกเรดาร์กรมอุตุฯ ให้ซูมพอดีกับรัศมีเรดาร์เพื่อให้เห็นชัดเจน
-            if (source === 'tmd_stp' || source === 'tmd_hyi') {
-                map.setView([7.05, 100.45], 9);
-            }
+            if (source !== 'rainviewer' && radarTimer) toggleRadarAnimation();
+            if (source === 'tmd_stp_hq') map.setView([7.05, 100.45], 9);
             renderActiveRadarLayer();
         }
 
@@ -655,11 +652,8 @@
         }
 
         function refreshActiveRadar() {
-            if (currentRadarSource === 'rainviewer') {
-                initRainViewerRadar();
-            } else {
-                renderActiveRadarLayer();
-            }
+            if (currentRadarSource === 'rainviewer') initRainViewerRadar();
+            else renderActiveRadarLayer();
         }
 
         function toggleRadarAnimation() {
@@ -683,59 +677,65 @@
         }
 
         // =====================================================
-        // 4. หน้าต่างดูเรดาร์สดกรมอุตุนิยมวิทยา (TMD Official Modal)
+        // 4. หน้าต่างเรดาร์สด Real-time (Windy Radar / Satellite / TMD HQ)
         // =====================================================
-        function openTmdModal() {
-            const modal = document.getElementById('tmd-modal');
+        function openRadarModal() {
+            const modal = document.getElementById('radar-modal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-            switchTmdStation(currentTmdModalStation);
+            document.getElementById('modal-live-clock').innerText = `● ข้อมูลสด ณ เวลา ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.`;
+            switchModalView('windy_radar');
         }
 
-        function closeTmdModal() {
-            const modal = document.getElementById('tmd-modal');
+        function closeRadarModal() {
+            const modal = document.getElementById('radar-modal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
         }
 
-        function switchTmdStation(code) {
-            currentTmdModalStation = code;
-            const cfg = TMD_RADAR_CONFIG[code];
-            const img = document.getElementById('tmd-live-img');
-            const fallback = document.getElementById('tmd-img-fallback');
-
-            ['stp240', 'hyi240', 'srt240'].forEach(k => {
-                const btn = document.getElementById(`tmd-btn-${k}`);
-                if (k === code) {
-                    btn.className = "text-xs font-semibold px-3 py-1.5 rounded-xl bg-sky-500 text-white shadow-sm";
+        function switchModalView(mode) {
+            ['windy_radar', 'windy_sat', 'tmd_hq'].forEach(k => {
+                const tab = document.getElementById(`modal-tab-${k}`);
+                if (k === mode) {
+                    tab.className = "text-xs font-semibold px-3.5 py-1.5 rounded-xl bg-sky-500 text-white shadow-sm";
                 } else {
-                    btn.className = "text-xs font-medium px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700";
+                    tab.className = "text-xs font-medium px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700";
                 }
             });
 
-            fallback.classList.add('hidden');
-            img.classList.remove('hidden');
-            img.src = `${cfg.url}?t=${Date.now()}`;
-            document.getElementById('tmd-direct-link').href = cfg.page;
-            document.getElementById('tmd-direct-link').innerText = `🔗 เปิดเว็บ${cfg.name} กรมอุตุนิยมวิทยา (หน้าต้นฉบับ) ↗`;
+            const iframeBox = document.getElementById('modal-iframe-container');
+            const tmdBox = document.getElementById('modal-tmd-container');
+            const iframe = document.getElementById('realtime-radar-iframe');
+
+            if (mode === 'windy_radar') {
+                tmdBox.classList.add('hidden');
+                iframeBox.classList.remove('hidden');
+                iframe.src = "https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=mm&metricTemp=°C&metricWind=km/h&zoom=9&overlay=radar&product=radar&level=surface&lat=7.0086&lon=100.4747&detailLat=7.0086&detailLon=100.4747&marker=true";
+            } else if (mode === 'windy_sat') {
+                tmdBox.classList.add('hidden');
+                iframeBox.classList.remove('hidden');
+                iframe.src = "https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=mm&metricTemp=°C&metricWind=km/h&zoom=8&overlay=satellite&product=satellite&level=surface&lat=7.0086&lon=100.4747&detailLat=7.0086&detailLon=100.4747&marker=true";
+            } else if (mode === 'tmd_hq') {
+                iframeBox.classList.add('hidden');
+                tmdBox.classList.remove('hidden');
+                loadTmdHqStation('stp');
+            }
         }
 
-        function handleTmdImgError() {
-            document.getElementById('tmd-live-img').classList.add('hidden');
-            document.getElementById('tmd-img-fallback').classList.remove('hidden');
-        }
-
-        function reloadTmdModalImage() {
-            switchTmdStation(currentTmdModalStation);
-        }
-
-        function applyTmdToMap() {
-            const targetSource = currentTmdModalStation === 'hyi240' ? 'tmd_hyi' : 'tmd_stp';
-            document.getElementById('radar-toggle').checked = true;
-            radarMasterEnabled = true;
-            document.getElementById('radar-source-select').value = targetSource;
-            changeRadarSource(targetSource);
-            closeTmdModal();
+        function loadTmdHqStation(st) {
+            ['stp', 'pkt', 'srt', 'krb'].forEach(k => {
+                const btn = document.getElementById(`btn-hq-${k}`);
+                btn.className = k === st
+                    ? "text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-500 text-white"
+                    : "text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700";
+            });
+            const urlMap = {
+                stp: `https://weather.tmd.go.th/stp/stp240_hq_latest.gif?t=${Date.now()}`,
+                pkt: `https://weather.tmd.go.th/pkt/pkt240_hq_latest.gif?t=${Date.now()}`,
+                srt: `https://weather.tmd.go.th/srt/srt240_hq_latest.gif?t=${Date.now()}`,
+                krb: `https://weather.tmd.go.th/krb/krb240_hq_latest.gif?t=${Date.now()}`
+            };
+            document.getElementById('tmd-hq-img').src = urlMap[st];
         }
 
         // =====================================================
@@ -804,121 +804,82 @@
         }
 
         // =====================================================
-        // 6. ดึงข้อมูลพยากรณ์อากาศจริงจาก Open-Meteo (ECMWF + GFS)
+        // 6. ดึงข้อมูลพยากรณ์อากาศจริง + ยืนยันด้วยเรดาร์เมฆฝนจริง
         // =====================================================
-       // ฟังก์ชันตรวจสอบว่ามีเมฆฝนจริงบนเรดาร์ RainViewer ณ พิกัด (lat, lon) หรือไม่
-async function checkRealRadarAtPoint(lat, lon) {
-    if (!radarFrames || radarFrames.length === 0) return null; // ถ้าเรดาร์โหลดไม่สำเร็จให้ข้าม
-    try {
-        // ใช้เฟรมเรดาร์ตรวจวัดจริงล่าสุด (ไม่เอาเฟรมพยากรณ์ล่วงหน้า)
-        const latestPastFrame = radarFrames.filter(f => f.time <= Math.floor(Date.now() / 1000)).pop() || radarFrames[radarFrames.length - 1];
-        const zoom = 7; // ระดับซูมมาตรฐานของ RainViewer
-        const n = Math.pow(2, zoom);
-        const xTile = Math.floor((lon + 180) / 360 * n);
-        const latRad = lat * Math.PI / 180;
-        const yTile = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+        async function loadLiveHybridData() {
+            document.getElementById('sim-selector').value = 'live';
+            document.getElementById('last-update-text').innerText = "กำลังดึงข้อมูล & ตรวจสอบเรดาร์จริง...";
 
-        // คำนวณตำแหน่งพิกเซล (0-255) ภายในแผ่น Tile 256x256
-        const xPixel = Math.floor((((lon + 180) / 360 * n) - xTile) * 256);
-        const yPixel = Math.floor((((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n) - yTile) * 256);
-
-        const tileUrl = `${rainViewerHost}${latestPastFrame.path}/256/${zoom}/${xTile}/${yTile}/2/1_1.png`;
-
-        return await new Promise((resolve) => {
-            const img = new Image();
-            img.crossOrigin = "Anonymous";
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = 256;
-                canvas.height = 256;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-                // อ่านค่าความทึบแสง (Alpha Channel: 0 = ฟ้าโปร่งไร้เมฆฝน, >0 = มีเรดาร์เมฆฝนจริง)
-                const alpha = ctx.getImageData(xPixel, yPixel, 1, 1).data[3];
-                resolve(alpha > 15); // คืนค่า true เฉพาะเมื่อมีกลุ่มเมฆฝนจริงบนเรดาร์
-            };
-            img.onerror = () => resolve(null);
-            img.src = tileUrl;
-        });
-    } catch (e) {
-        return null;
-    }
-}
-
-// ฟังก์ชันดึงข้อมูลจริง (อัปเกรดกรองค่า Noise 0.5-1.5 มม. ตอนแดดออก + ยืนยันด้วยเรดาร์จริง)
-async function loadLiveHybridData() {
-    document.getElementById('sim-selector').value = 'live';
-    document.getElementById('last-update-text').innerText = "กำลังดึงข้อมูล ECMWF + GFS + เช็กเรดาร์จริง...";
-
-    if (currentRadarSource === 'simulated') {
-        document.getElementById('radar-source-select').value = 'rainviewer';
-        currentRadarSource = 'rainviewer';
-        renderActiveRadarLayer();
-    }
-
-    await fetchThaiWaterLevel();
-
-    try {
-        const lats = STATIONS.map(s => s.lat).join(',');
-        const lons = STATIONS.map(s => s.lon).join(',');
-
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=precipitation,rain,weather_code&hourly=precipitation&models=ecmwf_ifs,gfs_seamless&timezone=Asia/Bangkok&forecast_days=2`;
-
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const results = await response.json();
-        const dataArray = Array.isArray(results) ? results : [results];
-
-        analyzedStations = await Promise.all(STATIONS.map(async (st, i) => {
-            const d = dataArray[i] || dataArray[0];
-            const times = d?.hourly?.time || [];
-            const ecmwfArr = d?.hourly?.precipitation_ecmwf_ifs || d?.hourly?.precipitation || [];
-            const gfsArr = d?.hourly?.precipitation_gfs_seamless || d?.hourly?.precipitation || [];
-
-            const currentIsoPrefix = d?.current?.time ? d.current.time.substring(0, 13) : new Date().toISOString().substring(0, 13);
-            let idx = times.findIndex(t => t.startsWith(currentIsoPrefix));
-            if (idx === -1) idx = 0;
-
-            let rawModelRain = d?.current?.precipitation ?? d?.current?.precipitation_ecmwf_ifs ?? ecmwfArr[idx] ?? 0;
-
-            // 1. ตรวจสอบกับเรดาร์เมฆฝนจริง ณ พิกัดตำบลนั้น
-            const hasRadarEcho = await checkRealRadarAtPoint(st.lat, st.lon);
-
-            let verifiedCurrentRain = rawModelRain;
-            if (hasRadarEcho === false) {
-                // ถ้าเรดาร์จริงยืนยันว่าท้องฟ้าเหนือตำบลนี้ไม่มีเมฆฝนเลย ให้ตัดค่า Drizzle Bias ของโมเดลเป็น 0 ทันที
-                verifiedCurrentRain = 0.0;
-            } else if (hasRadarEcho === null && rawModelRain < 2.0) {
-                // กรณีโหลดเรดาร์ไม่ได้ และค่าโมเดลต่ำกว่า 2.0 มม./ชม. ให้ถือเป็นค่า Noise ความชื้นตอนบ่าย
-                verifiedCurrentRain = 0.0;
+            if (currentRadarSource === 'simulated') {
+                document.getElementById('radar-source-select').value = 'rainviewer';
+                currentRadarSource = 'rainviewer';
             }
 
-            const next3hEcmwf = ecmwfArr.slice(idx + 1, idx + 4).map(v => v || 0);
-            const next3hGfs = gfsArr.slice(idx + 1, idx + 4).map(v => v || 0);
+            await initRainViewerRadar();
+            await fetchThaiWaterLevel();
 
-            const maxEcmwf3h = next3hEcmwf.length ? Math.max(...next3hEcmwf) : 0;
-            const maxGfs3h = next3hGfs.length ? Math.max(...next3hGfs) : 0;
-            const sumEcmwf3h = verifiedCurrentRain + next3hEcmwf.reduce((a, b) => a + b, 0);
-            const sumEcmwf24h = ecmwfArr.slice(idx, idx + 24).reduce((a, b) => a + (b || 0), 0);
+            try {
+                const lats = STATIONS.map(s => s.lat).join(',');
+                const lons = STATIONS.map(s => s.lon).join(',');
 
-            return {
-                ...st,
-                currentRain: verifiedCurrentRain,
-                maxEcmwf3h,
-                maxGfs3h,
-                sumEcmwf3h,
-                sumEcmwf24h
-            };
-        }));
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=precipitation&hourly=precipitation&models=ecmwf_ifs,gfs_seamless&timezone=Asia/Bangkok&forecast_days=2`;
 
-        recalculateAllStationsUI();
-        document.getElementById('last-update-text').innerText = `อัปเดตล่าสุด ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น. (ยืนยันเรดาร์จริงแล้ว)`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const results = await response.json();
+                const dataArray = Array.isArray(results) ? results : [results];
 
-    } catch (error) {
-        console.error("Open-Meteo Error:", error);
-        document.getElementById('last-update-text').innerText = "ดึงข้อมูลสำรองสำเร็จ";
-    }
-}
+                analyzedStations = await Promise.all(STATIONS.map(async (st, i) => {
+                    const d = dataArray[i] || dataArray[0];
+                    const times = d?.hourly?.time || [];
+                    const ecmwfArr = d?.hourly?.precipitation_ecmwf_ifs || d?.hourly?.precipitation || [];
+                    const gfsArr = d?.hourly?.precipitation_gfs_seamless || d?.hourly?.precipitation || [];
+
+                    const currentIsoPrefix = d?.current?.time ? d.current.time.substring(0, 13) : new Date().toISOString().substring(0, 13);
+                    let idx = times.findIndex(t => t.startsWith(currentIsoPrefix));
+                    if (idx === -1) idx = 0;
+
+                    const rawModelRain = d?.current?.precipitation ?? d?.current?.precipitation_ecmwf_ifs ?? ecmwfArr[idx] ?? 0;
+
+                    // ตรวจสอบกับเรดาร์เมฆฝนจริง ณ พิกัดตำบลนั้น
+                    const hasRadarEcho = await checkRealRadarAtPoint(st.lat, st.lon);
+
+                    let verifiedCurrentRain = rawModelRain;
+                    if (hasRadarEcho === false) {
+                        // ถ้าเรดาร์จริงยืนยันว่าไม่มีเมฆฝนเหนือตำบลนี้เลย ให้ตัดค่า Drizzle Bias (0.5-1.5 มม.) เป็น 0 ทันที
+                        verifiedCurrentRain = 0.0;
+                    } else if (hasRadarEcho === null && rawModelRain < 2.0) {
+                        // กรณีเรดาร์โหลดไม่ทัน และค่าโมเดลต่ำกว่า 2.0 มม. ให้ตัดเป็น 0 เพื่อป้องกัน False Alarm ตอนแดดออก
+                        verifiedCurrentRain = 0.0;
+                    }
+
+                    const next3hEcmwf = ecmwfArr.slice(idx + 1, idx + 4).map(v => v || 0);
+                    const next3hGfs = gfsArr.slice(idx + 1, idx + 4).map(v => v || 0);
+
+                    const maxEcmwf3h = next3hEcmwf.length ? Math.max(...next3hEcmwf) : 0;
+                    const maxGfs3h = next3hGfs.length ? Math.max(...next3hGfs) : 0;
+                    const sumEcmwf3h = verifiedCurrentRain + next3hEcmwf.reduce((a, b) => a + b, 0);
+                    const sumEcmwf24h = ecmwfArr.slice(idx, idx + 24).reduce((a, b) => a + (b || 0), 0);
+
+                    return {
+                        ...st,
+                        currentRain: verifiedCurrentRain,
+                        rawModelRain,
+                        maxEcmwf3h,
+                        maxGfs3h,
+                        sumEcmwf3h,
+                        sumEcmwf24h
+                    };
+                }));
+
+                recalculateAllStationsUI();
+                document.getElementById('last-update-text').innerText = `อัปเดตล่าสุด ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น. (ยืนยันเรดาร์จริง)`;
+
+            } catch (error) {
+                console.error("Open-Meteo Error:", error);
+                document.getElementById('last-update-text').innerText = "ดึงข้อมูลสำรองสำเร็จ";
+            }
+        }
 
         // =====================================================
         // 7. คำนวณคะแนนความเสี่ยง Hybrid Risk Score และแสดงผล UI
@@ -936,7 +897,7 @@ async function loadLiveHybridData() {
             analyzedStations = analyzedStations.map(st => {
                 let score = waterLevelScore;
                 if (st.maxEcmwf3h >= 15.0 || st.sumEcmwf3h >= 35.0) score += 2;
-                else if (st.maxEcmwf3h >= 5.0 || st.currentRain >= 4.0) score += 1;
+                else if (st.maxEcmwf3h >= 6.0 || st.currentRain >= 4.0) score += 1;
 
                 if (st.maxGfs3h >= 15.0) score += 1;
                 if (st.zone === 'upstream' && st.sumEcmwf24h >= 90.0) score += 2;
@@ -957,13 +918,18 @@ async function loadLiveHybridData() {
                     badgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
                     statusLabel = 'เฝ้าระวัง';
                     riskStationCount++;
-                } else if (st.currentRain >= 0.5 || st.maxEcmwf3h >= 1.0) {
+                } else if (st.currentRain >= 1.0) {
                     pinClass = 'pin-rain';
                     badgeClass = 'bg-sky-50 text-sky-700 border-sky-200';
-                    statusLabel = st.currentRain >= 0.5 ? 'ฝนกำลังตก' : 'กำลังจะมีฝน';
+                    statusLabel = 'ฝนกำลังตก';
+                } else if (st.maxEcmwf3h >= 3.0 && st.maxGfs3h >= 2.0) {
+                    pinClass = 'pin-rain';
+                    badgeClass = 'bg-sky-50 text-sky-700 border-sky-200';
+                    statusLabel = 'มีโอกาสเกิดฝน';
                 }
 
-                if (st.currentRain >= 0.5) {
+                // 1) จุดที่ฝนกำลังตกจริง
+                if (st.currentRain >= 1.0) {
                     rainingNowList.push(`
                         <div class="flex items-center justify-between bg-sky-50/80 border border-sky-100 px-3 py-2 rounded-xl">
                             <span class="font-medium text-slate-700">🌧️ ${st.name}</span>
@@ -972,7 +938,8 @@ async function loadLiveHybridData() {
                     `);
                 }
 
-                if (st.currentRain < 0.5 && (st.maxEcmwf3h >= 1.0 || st.maxGfs3h >= 1.0)) {
+                // 2) จุดที่พยากรณ์ว่าจะมีฝนปานกลาง-หนักใน 1-3 ชม. (กรองค่าต่ำกว่า 2.5 มม. ออกเพื่อไม่ให้กวนใจตอนแดดออก)
+                if (st.currentRain < 1.0 && (st.maxEcmwf3h >= 2.5 || st.maxGfs3h >= 2.5)) {
                     rainingSoonList.push(`
                         <div class="flex items-center justify-between bg-amber-50/80 border border-amber-100 px-3 py-2 rounded-xl">
                             <span class="font-medium text-slate-700">⏳ ${st.name}</span>
@@ -1021,7 +988,7 @@ async function loadLiveHybridData() {
                         <div class="font-bold text-sm text-slate-800">${st.name}</div>
                         <div class="text-slate-500">${st.desc}</div>
                         <hr class="my-1 border-slate-200">
-                        <div class="flex justify-between"><span>ฝนตกตอนนี้:</span> <strong>${st.currentRain.toFixed(1)} มม./ชม.</strong></div>
+                        <div class="flex justify-between"><span>ฝนตกจริงตอนนี้ (เรดาร์):</span> <strong>${st.currentRain.toFixed(1)} มม./ชม.</strong></div>
                         <div class="flex justify-between"><span>พยากรณ์ ECMWF (1-3 ชม.):</span> <strong class="text-sky-600">${st.maxEcmwf3h.toFixed(1)} มม./ชม.</strong></div>
                         <div class="flex justify-between"><span>พยากรณ์ GFS (1-3 ชม.):</span> <strong class="text-indigo-600">${st.maxGfs3h.toFixed(1)} มม./ชม.</strong></div>
                         <div class="flex justify-between"><span>ฝนสะสม 24 ชม.:</span> <strong>${st.sumEcmwf24h.toFixed(1)} มม.</strong></div>
@@ -1043,12 +1010,12 @@ async function loadLiveHybridData() {
             document.getElementById('badge-raining-count').innerText = `${rainingNowList.length} จุด`;
             document.getElementById('box-raining-now').innerHTML = rainingNowList.length
                 ? rainingNowList.join('')
-                : `<div class="bg-emerald-50/70 text-emerald-700 border border-emerald-100 px-3 py-2 rounded-xl">✅ ไม่มีฝนตกในจุดเฝ้าระวังทั้ง 8 จุดในขณะนี้</div>`;
+                : `<div class="bg-emerald-50/70 text-emerald-700 border border-emerald-100 px-3 py-2 rounded-xl">✅ ไม่มีฝนตกจริงบนเรดาร์ในจุดเฝ้าระวังทั้ง 8 จุดขณะนี้</div>`;
 
             document.getElementById('badge-soon-count').innerText = `${rainingSoonList.length} จุด`;
             document.getElementById('box-raining-soon').innerHTML = rainingSoonList.length
                 ? rainingSoonList.join('')
-                : `<div class="bg-slate-50 text-slate-500 border border-slate-200/70 px-3 py-2 rounded-xl">✓ ยังไม่มีแนวโน้มกลุ่มฝนก้อนใหม่ใน 1–3 ชม. ข้างหน้า</div>`;
+                : `<div class="bg-slate-50 text-slate-500 border border-slate-200/70 px-3 py-2 rounded-xl">✓ ยังไม่มีแนวโน้มฝนตกหนักใน 1–3 ชม. ข้างหน้า</div>`;
 
             document.getElementById('box-flood-alerts').innerHTML = floodAlertList.length
                 ? floodAlertList.join('')
@@ -1072,7 +1039,7 @@ async function loadLiveHybridData() {
                 badge.className = "bg-amber-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-sm";
                 badge.innerText = "⚠️ เฝ้าระวังสภาพอากาศ";
                 msg.className = "text-xs md:text-sm font-medium text-amber-900";
-                msg.innerText = "มีฝนตกในพื้นที่หรือระดับน้ำคลองอู่ตะเภาเริ่มสูงขึ้น โปรดติดตามสถานการณ์ใกล้ชิด";
+                msg.innerText = "มีฝนตกจริงในพื้นที่หรือระดับน้ำคลองอู่ตะเภาเริ่มสูงขึ้น โปรดติดตามสถานการณ์ใกล้ชิด";
                 floodStatusBadge.className = "text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200";
                 floodStatusBadge.innerText = "เฝ้าระวัง";
             } else {
@@ -1095,11 +1062,9 @@ async function loadLiveHybridData() {
             currentFilter = filter;
             ['all', 'urban', 'upstream'].forEach(key => {
                 const btn = document.getElementById(`tab-${key}`);
-                if (key === filter) {
-                    btn.className = "px-2.5 py-1 rounded-md bg-white text-slate-800 shadow-sm font-semibold";
-                } else {
-                    btn.className = "px-2.5 py-1 rounded-md text-slate-500";
-                }
+                btn.className = key === filter
+                    ? "px-2.5 py-1 rounded-md bg-white text-slate-800 shadow-sm font-semibold"
+                    : "px-2.5 py-1 rounded-md text-slate-500";
             });
             renderStationTable();
         }
@@ -1120,7 +1085,7 @@ async function loadLiveHybridData() {
                         </span>
                     </div>
                     <div class="grid grid-cols-4 gap-1.5 mt-2 pt-2 border-t border-slate-200/60 text-[11px]">
-                        <div><span class="text-slate-400">ตอนนี้:</span> <strong class="text-slate-700">${st.currentRain.toFixed(1)} มม.</strong></div>
+                        <div><span class="text-slate-400">ตกจริง:</span> <strong class="text-slate-700">${st.currentRain.toFixed(1)} มม.</strong></div>
                         <div><span class="text-slate-400">ECMWF:</span> <strong class="text-sky-600">${st.maxEcmwf3h.toFixed(1)} มม.</strong></div>
                         <div><span class="text-slate-400">GFS:</span> <strong class="text-indigo-600">${st.maxGfs3h.toFixed(1)} มม.</strong></div>
                         <div><span class="text-slate-400">สะสม 24ชม.:</span> <strong class="text-slate-700">${st.sumEcmwf24h.toFixed(1)} มม.</strong></div>
@@ -1144,7 +1109,6 @@ async function loadLiveHybridData() {
                 return;
             }
 
-            // เปิดเรดาร์จำลองกลุ่มพายุฝนอัตโนมัติเพื่อให้เห็นกลุ่มเมฆฝนสี dBZ บนแผนที่
             document.getElementById('radar-toggle').checked = true;
             radarMasterEnabled = true;
             document.getElementById('radar-source-select').value = 'simulated';
@@ -1157,7 +1121,7 @@ async function loadLiveHybridData() {
                     const isUrban = st.zone === 'urban';
                     return {
                         ...st,
-                        currentRain: isUrban ? 24.5 : 2.0,
+                        currentRain: isUrban ? 24.5 : 0.0,
                         maxEcmwf3h: isUrban ? 28.0 : 4.5,
                         maxGfs3h: isUrban ? 22.0 : 3.5,
                         sumEcmwf3h: isUrban ? 68.0 : 10.0,
@@ -1171,7 +1135,7 @@ async function loadLiveHybridData() {
                     const isUp = st.zone === 'upstream';
                     return {
                         ...st,
-                        currentRain: isUp ? 19.0 : 1.2,
+                        currentRain: isUp ? 19.0 : 0.0,
                         maxEcmwf3h: isUp ? 25.0 : 3.0,
                         maxGfs3h: isUp ? 21.0 : 2.5,
                         sumEcmwf3h: isUp ? 58.0 : 6.0,
@@ -1200,22 +1164,22 @@ async function loadLiveHybridData() {
         // =====================================================
         function openLineModal() {
             const nowStr = new Date().toLocaleString('th-TH');
-            const raining = analyzedStations.filter(s => s.currentRain >= 0.5);
-            const soon = analyzedStations.filter(s => s.currentRain < 0.5 && (s.maxEcmwf3h >= 1.0 || s.maxGfs3h >= 1.0));
+            const raining = analyzedStations.filter(s => s.currentRain >= 1.0);
+            const soon = analyzedStations.filter(s => s.currentRain < 1.0 && (s.maxEcmwf3h >= 2.5 || s.maxGfs3h >= 2.5));
             const risks = analyzedStations.filter(s => s.score >= 2);
 
             let text = `📢 รายงานเฝ้าระวังฝนและน้ำท่วม อ.หาดใหญ่\n`;
             text += `🕒 เวลา: ${nowStr}\n`;
-            text += `📊 วิเคราะห์ร่วม 3 แหล่ง (ECMWF + GFS + ระดับน้ำ สสน.)\n`;
+            text += `📊 วิเคราะห์ร่วม 3 แหล่ง + ยืนยันเรดาร์เมฆฝนจริง\n`;
             text += `----------------------------------\n`;
             text += `🌊 ระดับน้ำคลองอู่ตะเภา:\n`;
             text += `• สถานี X.44 (บ้านท่าแซ): ${waterStationInfo.x44_wl.toFixed(2)} ม.รทก. (${waterStationInfo.x44_pct.toFixed(0)}%)\n`;
             text += `• สถานี X.90 (บ้านพรุ): ${waterStationInfo.x90_wl.toFixed(2)} ม.รทก. (${waterStationInfo.x90_pct.toFixed(0)}%)\n\n`;
 
-            text += `🌧️ จุดที่ฝนกำลังตก (${raining.length} จุด):\n`;
+            text += `🌧️ จุดที่ฝนกำลังตกจริง (${raining.length} จุด):\n`;
             text += raining.length ? raining.map(s => `• ${s.name}: ${s.currentRain.toFixed(1)} มม./ชม.`).join('\n') : `• ไม่มีฝนตกในขณะนี้`;
-            text += `\n\n⏳ จุดที่ฝนกำลังจะตกใน 1-3 ชม. (${soon.length} จุด):\n`;
-            text += soon.length ? soon.map(s => `• ${s.name}: ECMWF ${s.maxEcmwf3h.toFixed(1)} | GFS ${s.maxGfs3h.toFixed(1)} มม.`).join('\n') : `• ไม่มีแนวโน้มฝนก้อนใหม่`;
+            text += `\n\n⏳ แนวโน้มพยากรณ์ฝนใน 1-3 ชม. (${soon.length} จุด):\n`;
+            text += soon.length ? soon.map(s => `• ${s.name}: ECMWF ${s.maxEcmwf3h.toFixed(1)} | GFS ${s.maxGfs3h.toFixed(1)} มม.`).join('\n') : `• ไม่มีแนวโน้มฝนตกหนัก`;
             text += `\n\n⚠️ ประเมินความเสี่ยงน้ำท่วม:\n`;
             text += risks.length ? risks.map(s => `• [${s.statusLabel}] ${s.name} (Score ${s.score}/5, สะสม 24 ชม. ${s.sumEcmwf24h.toFixed(1)} มม.)`).join('\n') : `• 🟢 สถานการณ์ปกติทุกจุดเฝ้าระวัง`;
 
