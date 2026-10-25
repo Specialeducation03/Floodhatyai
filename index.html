@@ -167,6 +167,9 @@
             <div class="absolute top-3 left-14 z-[900] flex flex-wrap gap-2">
                 <button onclick="map.setView([7.0086, 100.4747], 13)" class="bg-white/95 hover:bg-white text-slate-700 text-xs font-medium px-3 py-1.5 rounded-lg shadow border border-slate-200 backdrop-blur transition">
                     🏙️ ซูมเขตเมืองหาดใหญ่
+                <button onclick="map.setView([7.0285, 100.4945], 16)" class="bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow border border-rose-300 transition">
+                    🏠 ซูมบ้านพัก (คลอง ร.5)
+                </button>    
                 </button>
                 <button onclick="map.setView([6.8600, 100.4500], 10)" class="bg-white/95 hover:bg-white text-slate-700 text-xs font-medium px-3 py-1.5 rounded-lg shadow border border-slate-200 backdrop-blur transition">
                     🌊 ดูทั้งลุ่มน้ำคลองอู่ตะเภา
@@ -395,6 +398,7 @@
         // 1. ข้อมูลพิกัด 8 จุดเฝ้าระวังใน อ.หาดใหญ่ และลุ่มน้ำคลองอู่ตะเภา
         // =====================================================
         const STATIONS = [
+            { id: 0, name: "🏠 บ้านพัก (ริมคลอง ร.5 ถ.นวลแก้วอุทิศ)", shortName: "🏠 บ้านพัก (คลอง ร.5)", desc: "จุดเฝ้าระวังพิเศษ • รับน้ำจากเขาคอหงส์ลงคลอง ร.5", lat: 7.03037479636799, lon: 100.49160691074493, zone: "urban", isHome: true },
             { id: 1, name: "ต.หาดใหญ่ (เขตเทศบาลนคร)", shortName: "ต.หาดใหญ่", desc: "โซนเศรษฐกิจตัวเมืองหาดใหญ่", lat: 7.0086, lon: 100.4747, zone: "urban" },
             { id: 2, name: "ต.คอหงส์ (แนวเชิงเขาคอหงส์/ม.อ.)", shortName: "ต.คอหงส์ / ม.อ.", desc: "โซนรับน้ำไหลหลากจากเขาคอหงส์", lat: 7.0050, lon: 100.5050, zone: "urban" },
             { id: 3, name: "ต.คลองแห (ปลายน้ำคลองอู่ตะเภา)", shortName: "ต.คลองแห (ปลายน้ำ)", desc: "โซนปลายน้ำก่อนระบายลงทะเลสาบสงขลา", lat: 7.0425, lon: 100.4764, zone: "urban" },
@@ -832,6 +836,10 @@
                     badgeClass = 'bg-sky-50 text-sky-700 border-sky-200';
                     statusLabel = 'มีโอกาสเกิดฝน';
                 }
+                // เฝ้าระวังพิเศษสำหรับบ้านพักริมคลอง ร.5 (เตือนไวกว่าจุดทั่วไป)
+                if (st.isHome && (st.maxEcmwf3h >= 8.0 || st.sumEcmwf3h >= 20.0 || st.currentRain >= 1.0)) {
+                    score += 1;
+                }
 
                 // 1) จุดที่ฝนกำลังตกจริง
                 if (st.currentRain >= 1.2) {
@@ -844,7 +852,8 @@
                 }
 
                 // 2) จุดที่พยากรณ์ว่าจะมีฝนใน 1-3 ชม.
-                if (st.currentRain < 1.2 && (st.maxEcmwf3h >= 2.5 || st.maxGfs3h >= 2.5)) {
+               const soonThreshold = st.isHome ? 1.2 : 2.5;
+                if (st.currentRain < 1.2 && (st.maxEcmwf3h >= soonThreshold || st.maxGfs3h >= soonThreshold)) {
                     rainingSoonList.push(`
                         <div class="flex items-center justify-between bg-amber-50/80 border border-amber-100 px-3 py-2 rounded-xl">
                             <span class="font-medium text-slate-700">⏳ ${st.name}</span>
@@ -881,7 +890,7 @@
 
                 const iconHtml = `
                     <div class="station-marker-wrapper">
-                        <div class="station-pin ${pinClass}">${st.id}</div>
+                        <div class="station-pin ${pinClass}" style="${st.isHome ? 'width:38px;height:38px;font-size:17px;border:3px solid #fde047;' : ''}">${st.isHome ? '🏠' : st.id}</div>
                         <div class="station-label">${st.shortName} • ${statusLabel}</div>
                     </div>
                 `;
