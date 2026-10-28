@@ -758,19 +758,80 @@
         // =====================================================
         // 6. ดึงข้อมูลพยากรณ์อากาศจริง (ECMWF + GFS) แบบรวดเร็ว
         // =====================================================
+       // ฟังก์ชันโหลดแผ่นเรดาร์จริงมาอ่านค่าสี dBZ ณ พิกัด (lat, lon) แบบไม่ทำให้เว็บค้าง
+        const radarCanvasCache = {};
+        async function getRadarRainRateAtPoint(lat, lon) {
+            if (!radarFrames || radarFrames.length === 0) return 0;
+            try {
+                const latestFrame = radarFrames[radarFrames.length - 1];
+                const zoom = 7;
+                const n = Math.pow(2, zoom);
+                const xTile = Math.floor((lon + 180) / 360 * n);
+                const latRad = lat * Math.PI / 180;
+                const yTile = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+
+                const xPixel = Math.floor((((lon + 180) / 360 * n) - xTile) * 256);
+                const yPixel = Math.floor((((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n) - yTile) * 256);
+                const tileUrl = `${rainViewerHost}${latestFrame.path}/256/${zoom}/${xTile}/${yTile}/2/1_1.png`;
+
+                if (!radarCanvasCache[tileUrl]) {
+                    radarCanvasCache[tileUrl] = new Promise((resolve) => {
+                        const img = new Image();
+                        img.crossOrigin = "Anonymous";
+                        const timer = setTimeout(() => resolve(null), 2500); // กันค้างเกิน 2.5 วินาที
+                        img.onload = () => {
+                            clearTimeout(timer);
+                            const canvas = document.createElement('canvas');
+                            canvas.width = 256;
+                            canvas.height = 256;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0);
+                            resolve(ctx);
+                        };
+                        img.onerror = () => { clearTimeout(timer); resolve(null); };
+                        img.src = tileUrl;
+                    });
+                }
+
+                const ctx = await radarCanvasCache[tileUrl];
+                if (!ctx) return 0;
+
+                // สแกนจุดพิกัดและรอบข้าง 3x3 พิกเซล เพื่อหาค่ากลุ่มฝนที่แรงที่สุดเหนือจุดเฝ้าระวัง
+                let maxRadarMm = 0;
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        const px = Math.min(255, Math.max(0, xPixel + dx));
+                        const py = Math.min(255, Math.max(0, yPixel + dy));
+                        const [r, g, b, a] = ctx.getImageData(px, py, 1, 1).data;
+
+                        if (a >= 30) { // มีเมฆฝนบนเรดาร์จริง
+                            let mm = 1.5; // สีฟ้า/ฝนอ่อน
+                            if (r >= 180 && g < 90) mm = 25.0;            // สีแดง/ชมพู: ฝนตกหนักมาก (>50 dBZ)
+                            else if (r >= 200 && g >= 90 && g <= 185 && b < 90) mm = 15.0; // สีส้ม: ฝนตกหนัก (45 dBZ)
+                            else if (r >= 180 && g >= 180 && b < 100) mm = 8.0;            // สีเหลือง: ฝนปานกลาง-หนัก (38 dBZ)
+                            else if (g > r && g >= 110 && b < 130) mm = 3.5;               // สีเขียว: ฝนปานกลาง (30 dBZ)
+                            if (mm > maxRadarMm) maxRadarMm = mm;
+                        }
+                    }
+                }
+                return maxRadarMm;
+            } catch (e) {
+                return 0;
+            }
+        }
+
         async function loadLiveHybridData() {
             document.getElementById('sim-selector').value = 'live';
-            document.getElementById('last-update-text').innerText = "กำลังดึงข้อมูล ECMWF + GFS...";
+            document.getElementById('last-update-text').innerText = "กำลังดึงข้อมูล & สแกนสีเรดาร์จริง...";
 
             if (currentRadarSource === 'simulated') {
                 document.getElementById('radar-source-select').value = 'rainviewer';
                 currentRadarSource = 'rainviewer';
-                renderActiveRadarLayer();
             }
 
-            // เรียกระดับน้ำและเรดาร์แบบคู่ขนานโดยไม่บล็อกการดึงข้อมูลอากาศ
+            // รอโหลดเฟรมเรดาร์ล่าสุดก่อน (ใช้เวลา ~0.2 วินาที) เพื่อนำมาอ่านค่าสีเมฆฝน
             fetchThaiWaterLevel();
-            initRainViewerRadar();
+            await initRainViewerRadar();
 
             try {
                 const lats = STATIONS.map(s => s.lat).join(',');
@@ -783,23 +844,36 @@
                 const results = await response.json();
                 const dataArray = Array.isArray(results) ? results : [results];
 
-                analyzedStations = STATIONS.map((st, i) => {
+                // เวลาปัจจุบันตามโซนเวลาไทย (แก้บั๊กเวลา UTC เหลื่อม 7 ชม.)
+                const bangkokNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
+                const yyyy = bangkokNow.getFullYear();
+                const mm = String(bangkokNow.getMonth() + 1).padStart(2, '0');
+                const dd = String(bangkokNow.getDate()).padStart(2, '0');
+                const hh = String(bangkokNow.getHours()).padStart(2, '0');
+                const currentBangkokPrefix = `${yyyy}-${mm}-${dd}T${hh}`;
+
+                analyzedStations = await Promise.all(STATIONS.map(async (st, i) => {
                     const d = dataArray[i] || dataArray[0];
                     const times = d?.hourly?.time || [];
                     const ecmwfArr = d?.hourly?.precipitation_ecmwf_ifs || d?.hourly?.precipitation || [];
                     const gfsArr = d?.hourly?.precipitation_gfs_seamless || d?.hourly?.precipitation || [];
 
-                    const currentIsoPrefix = d?.current?.time ? d.current.time.substring(0, 13) : new Date().toISOString().substring(0, 13);
-                    let idx = times.findIndex(t => t.startsWith(currentIsoPrefix));
+                    let idx = times.findIndex(t => t.startsWith(currentBangkokPrefix));
                     if (idx === -1) idx = 0;
 
-                    const rawEcmwfNow = d?.current?.precipitation_ecmwf_ifs ?? d?.current?.precipitation ?? ecmwfArr[idx] ?? 0;
+                    const rawEcmwfNow = d?.current?.precipitation_ecmwf_ifs ?? ecmwfArr[idx] ?? 0;
                     const rawGfsNow = d?.current?.precipitation_gfs_seamless ?? gfsArr[idx] ?? 0;
 
-                    // กรองค่า Drizzle Bias ตอนบ่ายแดดออก:
-                    // จะถือว่า "ฝนกำลังตกจริง" ก็ต่อเมื่อมีค่าเกิน 2.0 มม./ชม. หรือทั้ง 2 โมเดล (ECMWF และ GFS) ยืนยันตรงกันว่ามีฝนเกิน 1.2 มม./ชม.
+                    // 1. อ่านค่าความแรงฝนจากสีเรดาร์จริงบนแผนที่ ณ พิกัดสถานี
+                    const radarRainMm = await getRadarRainRateAtPoint(st.lat, st.lon);
+
+                    // 2. ผสานค่าเรดาร์จริง + โมเดล:
+                    // - ถ้าเรดาร์มีสีเมฆฝน (radarRainMm > 0) ให้ใช้ค่าจากเรดาร์จริงเป็นหลักทันที!
+                    // - ถ้าเรดาร์โหลดไม่ขึ้น ค่อยเช็กว่าโมเดลเกิน 2.0 มม. หรือไม่ (เพื่อกันสัญญาณหลอกตอนแดดออก)
                     let verifiedCurrentRain = 0.0;
-                    if (rawEcmwfNow >= 2.0 || (rawEcmwfNow >= 1.2 && rawGfsNow >= 1.2)) {
+                    if (radarRainMm > 0) {
+                        verifiedCurrentRain = Math.max(radarRainMm, rawEcmwfNow, ecmwfArr[idx + 1] || 0);
+                    } else if (rawEcmwfNow >= 2.0 && rawGfsNow >= 1.2) {
                         verifiedCurrentRain = rawEcmwfNow;
                     }
 
@@ -819,10 +893,10 @@
                         sumEcmwf3h,
                         sumEcmwf24h
                     };
-                });
+                }));
 
                 recalculateAllStationsUI();
-                document.getElementById('last-update-text').innerText = `อัปเดตล่าสุด ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น. (Live Hybrid)`;
+                document.getElementById('last-update-text').innerText = `อัปเดตล่าสุด ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น. (สแกนสีเรดาร์จริงแล้ว)`;
 
             } catch (error) {
                 console.error("Open-Meteo Error:", error);
@@ -845,7 +919,7 @@
 
             analyzedStations = analyzedStations.map(st => {
                 let score = waterLevelScore;
-                if (st.maxEcmwf3h >= 15.0 || st.sumEcmwf3h >= 35.0) score += 2;
+                if (st.currentRain >= 12.0 || st.maxEcmwf3h >= 15.0 || st.sumEcmwf3h >= 35.0) score += 2;
                 else if (st.maxEcmwf3h >= 6.0 || st.currentRain >= 4.0) score += 1;
 
                 if (st.maxGfs3h >= 15.0) score += 1;
